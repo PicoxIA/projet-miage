@@ -43,6 +43,22 @@ export const fr = {
   formSectionSubject: "Sujet",
   formSectionVoice: "Dictée vocale",
   formSectionMessage: "Message",
+  transcriptionMode: "Mode transcription",
+  modeAuto: "Auto",
+  modeWhisper: "Haute précision (Whisper)",
+  modeOffline: "Offline (Vosk)",
+  engineLabel: "Moteur",
+  engineWhisper: "Whisper",
+  engineVosk: "Vosk",
+  modeHintAuto: "Whisper si le serveur répond, sinon Vosk dans le navigateur.",
+  modeHintWhisper: "Meilleure précision — nécessite le backend sur le port 5000.",
+  modeHintOffline: "100 % local — aucun envoi audio vers le serveur.",
+  whisperTranscribing: "Transcription Whisper…",
+  whisperBackendDown: "Serveur Whisper indisponible. Lancez le backend (port 5000) ou choisissez le mode Offline.",
+  whisperAutoFallback: "Whisper indisponible — passage en mode offline (Vosk).",
+  whisperErrorFallbackVosk: "Échec Whisper — dictée passée en mode offline (Vosk).",
+  whisperErrorHighPrecision: "Transcription Whisper impossible. Vérifiez le backend.",
+  lastEngine: "Dernière dictée",
 };
 
 export type TranslationKey = keyof typeof fr;

@@ -1,25 +1,65 @@
 import { useEffect, useRef, useState } from "react";
-import { t } from "../config/i18n/index";
+import { t, type TranslationKey } from "../config/i18n/index";
 import { MicIcon, StopIcon } from "./icons";
 
-type Status = "idle" | "loading-model" | "listening" | "error";
+type VoskStatus = "idle" | "loading-model" | "listening" | "error";
 
-type Props = {
-  status: Status;
-  errorMessage?: string;
-  onStart: () => void;
-  onStop: () => void;
+export type TranscriptionMode = "auto" | "whisper" | "offline";
+
+export type VoiceRecorderProps = {
   languageCode: string;
+  /** Vosk (inchangé) */
+  status: VoskStatus;
+  errorMessage?: string;
+  onStart: () => void | Promise<void>;
+  onStop: () => void | Promise<void>;
   interimText: string;
   analyserNode: AnalyserNode | null;
+  /** Mode UI */
+  modeSelect: TranscriptionMode;
+  modeHint: string;
+  onModeChange: (m: TranscriptionMode) => void;
+  modeDisabled: boolean;
+  /** Whisper */
+  activeEngine: "none" | "whisper" | "vosk";
+  whisperRecording: boolean;
+  whisperTranscribing: boolean;
+  whisperError: string | null;
+  lastEngine: "whisper" | "vosk" | null;
+  pulseWaveform: boolean;
+  /** Messages info (fallback, etc.) */
+  notice: string | null;
+  highPrecisionBlockError: string | null;
 };
 
 const N_BARS = 32;
 
-function Waveform({ analyserNode }: { analyserNode: AnalyserNode | null }) {
+function Waveform({
+  analyserNode,
+  pulse,
+}: { analyserNode: AnalyserNode | null; pulse: boolean }) {
   const barsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    if (pulse) {
+      const bars = barsRef.current;
+      let rafId: number;
+      function tick() {
+        const t = Date.now() / 220;
+        bars.forEach((bar, i) => {
+          if (!bar) return;
+          const env = 1 - (Math.abs(i - N_BARS / 2) / (N_BARS / 2)) * 0.5;
+          const h = 8 + (Math.sin(t + i * 0.25) * 0.5 + 0.5) * 30 * env;
+          bar.style.height = `${h}px`;
+          bar.style.opacity = String(0.5 + h / 55);
+          bar.className = "wbar wbar--pulse";
+        });
+        rafId = requestAnimationFrame(tick);
+      }
+      rafId = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(rafId);
+    }
+
     const bars = barsRef.current;
     if (!analyserNode) {
       bars.forEach((bar) => {
@@ -55,7 +95,7 @@ function Waveform({ analyserNode }: { analyserNode: AnalyserNode | null }) {
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [analyserNode]);
+  }, [analyserNode, pulse]);
 
   return (
     <div className="waveform">
@@ -65,7 +105,6 @@ function Waveform({ analyserNode }: { analyserNode: AnalyserNode | null }) {
     </div>
   );
 }
-
 
 function formatTime(s: number) {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -86,17 +125,48 @@ function addRipple(e: React.MouseEvent<HTMLButtonElement>) {
   r.addEventListener("animationend", () => r.remove());
 }
 
+const MODE_DATA: { value: TranscriptionMode; key: TranslationKey }[] = [
+  { value: "auto", key: "modeAuto" },
+  { value: "whisper", key: "modeWhisper" },
+  { value: "offline", key: "modeOffline" },
+];
+
 export function VoiceRecorder({
-  status, errorMessage, onStart, onStop, languageCode, interimText, analyserNode,
-}: Props) {
-  const isBusy = status === "loading-model";
-  const isListening = status === "listening";
+  status,
+  errorMessage,
+  onStart,
+  onStop,
+  languageCode,
+  interimText,
+  analyserNode,
+  modeSelect,
+  modeHint,
+  onModeChange,
+  modeDisabled,
+  activeEngine,
+  whisperRecording,
+  whisperTranscribing,
+  whisperError,
+  lastEngine,
+  pulseWaveform,
+  notice,
+  highPrecisionBlockError,
+}: VoiceRecorderProps) {
+  const isWhisperPath = activeEngine === "whisper" || whisperRecording || whisperTranscribing;
+
+  const isBusyVosk = status === "loading-model";
+  const isListeningVosk = status === "listening";
+  const isTranscribingWhisper = isWhisperPath && whisperTranscribing && !whisperRecording;
+  const isBusy = isBusyVosk || isTranscribingWhisper;
+  const isListening = isWhisperPath
+    ? whisperRecording && !whisperTranscribing
+    : isListeningVosk;
+
   const levelBarRef = useRef<HTMLDivElement | null>(null);
   const startTimeRef = useRef<number>(0);
   const [elapsed, setElapsed] = useState(0);
   const displayElapsed = isListening ? elapsed : 0;
 
-  /* Compteur de session d’écoute (indépendant de Vosk). */
   useEffect(() => {
     if (!isListening) return;
     startTimeRef.current = Date.now();
@@ -106,8 +176,11 @@ export function VoiceRecorder({
     return () => clearInterval(id);
   }, [isListening]);
 
-  /* Niveau sonore (RAF distinct du waveform). */
   useEffect(() => {
+    if (isWhisperPath) {
+      if (levelBarRef.current) levelBarRef.current.style.width = whisperRecording ? "60%" : "0%";
+      return;
+    }
     if (!analyserNode) {
       if (levelBarRef.current) levelBarRef.current.style.width = "0%";
       return;
@@ -126,22 +199,78 @@ export function VoiceRecorder({
     }
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [analyserNode]);
+  }, [analyserNode, isWhisperPath, whisperRecording]);
 
   const handleStart = (e: React.MouseEvent<HTMLButtonElement>) => {
     addRipple(e);
     vibrate([40, 20, 40]);
-    onStart();
+    void Promise.resolve(onStart());
   };
 
   const handleStop = (e: React.MouseEvent<HTMLButtonElement>) => {
     addRipple(e);
     vibrate(80);
-    onStop();
+    void Promise.resolve(onStop());
   };
+
+  const statusLine = (() => {
+    if (isTranscribingWhisper) {
+      return <span className="voice-status-text">{t(languageCode, "whisperTranscribing")}</span>;
+    }
+    if (isBusyVosk) {
+      return <span className="voice-status-text voice-status-text--inline">{t(languageCode, "loadingModel")}</span>;
+    }
+    if (isListening) {
+      return (
+        <span className="voice-status-line">
+          <span className="voice-status-label">
+            {isWhisperPath
+              ? t(languageCode, "listening")
+              : t(languageCode, "listening")}
+          </span>
+          <span className="voice-timer" aria-label="Recording time">
+            {formatTime(displayElapsed)}
+          </span>
+        </span>
+      );
+    }
+    return <span className="voice-status-text">{t(languageCode, "waitingStatus")}</span>;
+  })();
+
+  const showInterim = !isWhisperPath && Boolean(interimText);
+  const engineBadge = lastEngine
+    ? `${t(languageCode, "lastEngine")}: ${t(languageCode, lastEngine === "whisper" ? "engineWhisper" : "engineVosk")}`
+    : null;
 
   return (
     <>
+      <div className="voice-transcription-ui">
+        <p className="voice-mode-hint" role="note">{modeHint}</p>
+        {engineBadge && <p className="voice-engine-badge">{engineBadge}</p>}
+        {notice && <p className="voice-notice" role="status">{notice}</p>}
+        {highPrecisionBlockError && (
+          <p className="voice-notice voice-notice--error" role="alert">{highPrecisionBlockError}</p>
+        )}
+
+        <div className="form-field mode-field">
+          <label className="field-label" htmlFor="transcription-mode">{t(languageCode, "transcriptionMode")}</label>
+          <div id="transcription-mode" className="transcription-mode-row">
+            {MODE_DATA.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                className={`transcription-mode-btn${modeSelect === m.value ? " active" : ""}`}
+                onClick={() => onModeChange(m.value)}
+                disabled={modeDisabled}
+                title={t(languageCode, m.key)}
+              >
+                {t(languageCode, m.key)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div
         className={`voice-box${isListening ? " recording" : ""}${isBusy ? " loading" : ""}`}
         aria-busy={isBusy}
@@ -153,42 +282,46 @@ export function VoiceRecorder({
           <div className="voice-status">
             <span
               className={`status-dot ${
-                isBusy ? "loading" : isListening ? "listening" : "idle"
+                isBusy && !isListening
+                  ? "loading"
+                  : isListening
+                    ? "listening"
+                    : "idle"
               }`}
             />
-            {isBusy ? (
-              <span className="voice-status-text voice-status-text--inline">{t(languageCode, "loadingModel")}</span>
-            ) : isListening ? (
-              <span className="voice-status-line">
-                <span className="voice-status-label">{t(languageCode, "listening")}</span>
-                <span className="voice-timer" aria-label="Recording time">
-                  {formatTime(displayElapsed)}
-                </span>
-              </span>
-            ) : (
-              <span className="voice-status-text">{t(languageCode, "waitingStatus")}</span>
-            )}
+            {statusLine}
           </div>
         </div>
 
-        <Waveform analyserNode={analyserNode} />
+        <Waveform
+          analyserNode={isWhisperPath ? null : analyserNode}
+          pulse={pulseWaveform && whisperRecording}
+        />
 
-        {/* Volume level bar */}
         <div className="db-meter-wrap">
           <div className="db-track">
             <div className="db-fill" ref={levelBarRef} />
           </div>
         </div>
 
-        {interimText && (
+        {showInterim && (
           <div className="interim-text">{interimText}</div>
         )}
 
         <div className="voice-actions">
           {!isListening ? (
-            <button className="btn-mic start" onClick={handleStart} disabled={isBusy} type="button">
+            <button
+              className="btn-mic start"
+              onClick={handleStart}
+              disabled={isBusy}
+              type="button"
+            >
               <MicIcon />
-              {isBusy ? t(languageCode, "loadingModel") : t(languageCode, "startDictation")}
+              {isBusy
+                ? (isTranscribingWhisper
+                    ? t(languageCode, "whisperTranscribing")
+                    : t(languageCode, "loadingModel"))
+                : t(languageCode, "startDictation")}
             </button>
           ) : (
             <button className="btn-mic stop" onClick={handleStop} type="button">
@@ -198,12 +331,14 @@ export function VoiceRecorder({
           )}
         </div>
 
-        {status === "error" && errorMessage && (
+        {status === "error" && errorMessage && !isWhisperPath && (
           <p className="dictee-error">⚠ {errorMessage}</p>
+        )}
+        {isWhisperPath && whisperError && (
+          <p className="dictee-error">⚠ {whisperError}</p>
         )}
       </div>
 
-      {/* FAB — only visible on mobile via CSS */}
       <button
         className={`voice-fab${isListening ? " voice-fab--stop" : ""}${isBusy ? " voice-fab--loading" : ""}`}
         onClick={isListening ? handleStop : handleStart}

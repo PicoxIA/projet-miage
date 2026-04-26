@@ -211,6 +211,34 @@ textarea.rs-input,
 }
 .message-field .rs-input:focus { box-shadow: var(--ring-focus) !important; }
 
+/* — Mode transcription (Whisper / Vosk) — */
+.voice-transcription-ui { margin-bottom: 8px; }
+.voice-mode-hint {
+  font-size: 12.5px; line-height: 1.45; color: var(--muted); margin: 0 0 8px;
+  padding: 8px 10px; border-radius: 10px; background: var(--bg3); border: 1px solid var(--border);
+}
+.voice-engine-badge {
+  font-size: 11px; font-weight: 600; color: var(--green); font-family: var(--font-head);
+  margin: 0 0 8px; padding: 2px 0;
+}
+.voice-notice {
+  font-size: 12.5px; line-height: 1.4; color: var(--text); margin: 0 0 8px; padding: 8px 10px;
+  border-radius: 10px; background: oklch(0.70 0.17 152 / 0.1); border: 1px solid oklch(0.70 0.17 152 / 0.3);
+  animation: fadeUp 0.3s var(--easing, ease) both;
+}
+.voice-notice--error { color: var(--danger); background: oklch(0.68 0.20 25 / 0.1); border-color: oklch(0.68 0.20 25 / 0.35); }
+.transcription-mode-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.transcription-mode-btn {
+  font-family: var(--font-head); font-size: 11.5px; font-weight: 600; padding: 6px 12px; border-radius: 10px;
+  border: 1.5px solid var(--border); background: var(--bg3); color: var(--text); cursor: pointer; transition: all 0.2s;
+}
+.transcription-mode-btn:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+.transcription-mode-btn.active {
+  border-color: var(--green); color: var(--green); background: var(--green-glow); box-shadow: 0 0 0 1px oklch(0.70 0.17 152 / 0.2);
+}
+.transcription-mode-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.mode-field { margin-top: 0; }
+
 /* === Voice box === */
 .voice-box {
   background: var(--bg3);
@@ -286,6 +314,7 @@ textarea.rs-input,
   transition: height 0.1s ease, opacity 0.1s ease, filter 0.2s;
 }
 .wbar.idle { background: var(--border); height: 4px !important; opacity: 0.45; filter: none; }
+.wbar--pulse { filter: drop-shadow(0 0 4px oklch(0.70 0.17 152 / 0.35)); }
 .voice-box.recording .wbar { filter: drop-shadow(0 0 6px oklch(0.70 0.17 152 / 0.5)); }
 
 /* Interim transcript */

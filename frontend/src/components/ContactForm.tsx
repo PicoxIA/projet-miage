@@ -4,8 +4,10 @@ import { LANGUAGES } from "../config/languages";
 import { t, type TranslationKey } from "../config/i18n/index";
 import { useLanguage } from "../context/useLanguage";
 import { LanguageSelector } from "./LanguageSelector";
-import { VoiceRecorder } from "./VoiceRecorder";
+import { VoiceRecorder, type TranscriptionMode } from "./VoiceRecorder";
 import { useVoskRecognition } from "../hooks/useVoskRecognition";
+import { useWhisperRecognition } from "../hooks/useWhisperRecognition";
+import { checkWhisperHealth } from "../services/transcriptionApi";
 
 const LANG_FLAGS: Record<string, string> = {
   fr: "🇫🇷", en: "🇺🇸", de: "🇩🇪", sr: "🇷🇸", el: "🇬🇷",
@@ -165,28 +167,120 @@ export function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ subject?: boolean; message?: boolean }>({});
+  const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>("auto");
+  const [activeDictationPath, setActiveDictationPath] = useState<"whisper" | "vosk" | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const [highPrecisionError, setHighPrecisionError] = useState<string | null>(null);
+  const [lastEngine, setLastEngine] = useState<"whisper" | "vosk" | null>(null);
+
+  const onWhisperText = (text: string) => {
+    setPartial("");
+    if (text.trim()) {
+      setMessage((m) => (m ? `${m} ${text.trim()}` : text.trim()));
+    }
+    setLastEngine("whisper");
+    setActiveDictationPath(null);
+  };
+
+  const whisper = useWhisperRecognition({
+    languageCode,
+    onTranscribed: onWhisperText,
+  });
 
   const modelUrl = useMemo(
     () => LANGUAGES.find((l) => l.code === languageCode)!.modelUrl,
     [languageCode]
   );
 
-  const { status, errorMessage, start, stop, analyserNode } = useVoskRecognition({
+  const { status, errorMessage, start: startVosk, stop: stopVosk, analyserNode } = useVoskRecognition({
     modelUrl,
     onFinalResult: (text) => {
       setMessage((prev) => (prev ? `${prev} ${text}` : text));
       setPartial("");
+      setLastEngine("vosk");
     },
     onPartialResult: (text) => setPartial(text),
   });
 
   const displayMessage = partial ? `${message}${message ? " " : ""}${partial}` : message;
-  const isListening = status === "listening";
+  const isDictationLock =
+    (activeDictationPath === "whisper" && (whisper.isRecording || whisper.isTranscribing)) ||
+    (activeDictationPath === "vosk" && (status === "listening" || status === "loading-model"));
   const effectiveLength = displayMessage.length;
   const msgOverLimit = effectiveLength > MAX_MSG;
   const isFormValid =
     Boolean(subject.trim()) && Boolean(displayMessage.trim()) && !msgOverLimit;
-  const isSubmitDisabled = !isFormValid || isListening || isSubmitting;
+  const isSubmitDisabled = !isFormValid || isDictationLock || isSubmitting;
+
+  const modeHint = useMemo(() => {
+    if (transcriptionMode === "auto") return tr("modeHintAuto");
+    if (transcriptionMode === "whisper") return tr("modeHintWhisper");
+    return tr("modeHintOffline");
+  }, [transcriptionMode, languageCode]);
+
+  const handleVoiceStart = async () => {
+    whisper.clearError();
+    setVoiceNotice(null);
+    setHighPrecisionError(null);
+
+    if (transcriptionMode === "offline") {
+      setActiveDictationPath("vosk");
+      startVosk();
+      return;
+    }
+
+    if (transcriptionMode === "whisper") {
+      const ok = await checkWhisperHealth();
+      if (!ok) {
+        setHighPrecisionError(tr("whisperBackendDown"));
+        return;
+      }
+      setActiveDictationPath("whisper");
+      const started = await whisper.startRecording();
+      if (!started) setActiveDictationPath(null);
+      return;
+    }
+
+    const online = await checkWhisperHealth();
+    if (online) {
+      setActiveDictationPath("whisper");
+      const started = await whisper.startRecording();
+      if (!started) setActiveDictationPath(null);
+    } else {
+      setVoiceNotice(tr("whisperAutoFallback"));
+      setActiveDictationPath("vosk");
+      startVosk();
+    }
+  };
+
+  const handleVoiceStop = async () => {
+    if (activeDictationPath === "whisper") {
+      try {
+        await whisper.stopRecording();
+      } catch {
+        if (transcriptionMode === "auto") {
+          setVoiceNotice(tr("whisperErrorFallbackVosk"));
+          setActiveDictationPath("vosk");
+          startVosk();
+        } else {
+          setActiveDictationPath(null);
+        }
+      }
+      return;
+    }
+    if (activeDictationPath === "vosk") {
+      stopVosk();
+      setActiveDictationPath(null);
+    }
+  };
+
+  const activeEngineDisplay: "none" | "whisper" | "vosk" = (() => {
+    if (activeDictationPath === "whisper" || whisper.isRecording || whisper.isTranscribing) {
+      return "whisper";
+    }
+    if (activeDictationPath === "vosk") return "vosk";
+    return "none";
+  })();
 
   const messageFieldRef = useRef<HTMLDivElement>(null);
   // Auto-hauteur du textarea (uniquement présentation, sans logique métier)
@@ -254,6 +348,12 @@ export function ContactForm() {
     setPartial("");
     setSubmitError(null);
     setFieldErrors({});
+    setTranscriptionMode("auto");
+    setActiveDictationPath(null);
+    setVoiceNotice(null);
+    setHighPrecisionError(null);
+    setLastEngine(null);
+    whisper.clearError();
   };
 
   return (
@@ -293,7 +393,7 @@ export function ContactForm() {
                   cleanable={false}
                   placement="bottomStart"
                   block
-                  disabled={isListening}
+                  disabled={isDictationLock}
                 />
               </div>
               <div className={`form-field${category ? " field-filled" : ""}`}>
@@ -308,7 +408,7 @@ export function ContactForm() {
                   cleanable={false}
                   placement="bottomStart"
                   block
-                  disabled={isListening}
+                  disabled={isDictationLock}
                 />
               </div>
             </div>
@@ -321,7 +421,7 @@ export function ContactForm() {
                 <LanguageSelector
                   value={languageCode}
                   onChange={setLanguageCode}
-                  disabled={isListening}
+                  disabled={isDictationLock}
                 />
               </div>
             </div>
@@ -335,7 +435,7 @@ export function ContactForm() {
                 id="contact-subject"
                 value={subject}
                 onChange={handleSubjectChange}
-                disabled={isListening}
+                disabled={isDictationLock}
                 placeholder={tr("subjectPlaceholder")}
               />
               {fieldErrors.subject && (
@@ -349,11 +449,23 @@ export function ContactForm() {
             <VoiceRecorder
               status={status}
               errorMessage={errorMessage}
-              onStart={start}
-              onStop={stop}
+              onStart={handleVoiceStart}
+              onStop={handleVoiceStop}
               languageCode={languageCode}
               interimText={partial}
               analyserNode={analyserNode}
+              modeSelect={transcriptionMode}
+              modeHint={modeHint}
+              onModeChange={setTranscriptionMode}
+              modeDisabled={isDictationLock}
+              activeEngine={activeEngineDisplay}
+              whisperRecording={whisper.isRecording}
+              whisperTranscribing={whisper.isTranscribing}
+              whisperError={whisper.error}
+              lastEngine={lastEngine}
+              pulseWaveform={activeDictationPath === "whisper" && whisper.isRecording}
+              notice={voiceNotice}
+              highPrecisionBlockError={highPrecisionError}
             />
           </div>
 
@@ -405,7 +517,7 @@ export function ContactForm() {
               {tr("formIncompleteHint")}
             </p>
             <button
-              className={`btn-submit${isFormValid && !isListening && !isSubmitting ? " btn-submit--ready" : ""}`}
+              className={`btn-submit${isFormValid && !isDictationLock && !isSubmitting ? " btn-submit--ready" : ""}`}
               type="submit"
               disabled={isSubmitDisabled}
               onClick={addRipple}
@@ -421,7 +533,7 @@ export function ContactForm() {
             <button
               key={lang.code}
               className={`lang-pill${languageCode === lang.code ? " active" : ""}`}
-              onClick={() => !isListening && setLanguageCode(lang.code)}
+              onClick={() => !isDictationLock && setLanguageCode(lang.code)}
               type="button"
               title={`${lang.label} — ${lang.nativeLabel}`}
             >
