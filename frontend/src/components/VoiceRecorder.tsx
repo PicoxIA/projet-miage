@@ -31,12 +31,12 @@ function Waveform({ analyserNode }: { analyserNode: AnalyserNode | null }) {
       return;
     }
 
-    const data = new Uint8Array(analyserNode.frequencyBinCount);
+    const node = analyserNode;
+    const data = new Uint8Array(node.frequencyBinCount);
     let rafId: number;
 
     function tick() {
-
-      analyserNode.getByteFrequencyData(data);
+      node.getByteFrequencyData(data);
       const voiceSlice = Array.from(data.slice(1, 21));
       const avg = voiceSlice.reduce((s, v) => s + v, 0) / voiceSlice.length;
       const level = Math.min(1, avg / 70);
@@ -96,7 +96,7 @@ export function VoiceRecorder({
   const [elapsed, setElapsed] = useState(0);
   const displayElapsed = isListening ? elapsed : 0;
 
-  /* recording timer — setState only inside interval callback, not in effect body */
+  /* Compteur de session d’écoute (indépendant de Vosk). */
   useEffect(() => {
     if (!isListening) return;
     startTimeRef.current = Date.now();
@@ -106,7 +106,7 @@ export function VoiceRecorder({
     return () => clearInterval(id);
   }, [isListening]);
 
-  /* dB level bar — separate RAF from waveform */
+  /* Niveau sonore (RAF distinct du waveform). */
   useEffect(() => {
     if (!analyserNode) {
       if (levelBarRef.current) levelBarRef.current.style.width = "0%";
@@ -142,18 +142,32 @@ export function VoiceRecorder({
 
   return (
     <>
-      <div className={`voice-box${isListening ? " recording" : ""}`}>
+      <div
+        className={`voice-box${isListening ? " recording" : ""}${isBusy ? " loading" : ""}`}
+        aria-busy={isBusy}
+      >
         <div className="voice-top">
           <span className="voice-title">
             <MicIcon /> {t(languageCode, "voiceTitle")}
           </span>
           <div className="voice-status">
-            <span className={`status-dot ${isListening ? "listening" : "idle"}`} />
-            <span>
-              {isListening
-                ? `${t(languageCode, "listening")} · ${formatTime(displayElapsed)}`
-                : t(languageCode, "waitingStatus")}
-            </span>
+            <span
+              className={`status-dot ${
+                isBusy ? "loading" : isListening ? "listening" : "idle"
+              }`}
+            />
+            {isBusy ? (
+              <span className="voice-status-text voice-status-text--inline">{t(languageCode, "loadingModel")}</span>
+            ) : isListening ? (
+              <span className="voice-status-line">
+                <span className="voice-status-label">{t(languageCode, "listening")}</span>
+                <span className="voice-timer" aria-label="Recording time">
+                  {formatTime(displayElapsed)}
+                </span>
+              </span>
+            ) : (
+              <span className="voice-status-text">{t(languageCode, "waitingStatus")}</span>
+            )}
           </div>
         </div>
 
@@ -191,11 +205,17 @@ export function VoiceRecorder({
 
       {/* FAB — only visible on mobile via CSS */}
       <button
-        className={`voice-fab${isListening ? " voice-fab--stop" : ""}`}
+        className={`voice-fab${isListening ? " voice-fab--stop" : ""}${isBusy ? " voice-fab--loading" : ""}`}
         onClick={isListening ? handleStop : handleStart}
         disabled={isBusy}
         type="button"
-        aria-label={isListening ? "Arrêter la dictée" : "Commencer la dictée"}
+        aria-label={
+          isBusy
+            ? t(languageCode, "loadingModel")
+            : isListening
+              ? t(languageCode, "stopDictation")
+              : t(languageCode, "startDictation")
+        }
       >
         {isListening ? <StopIcon /> : <MicIcon />}
       </button>

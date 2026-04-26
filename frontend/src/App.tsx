@@ -11,13 +11,16 @@ function AppInner() {
   const { languageCode } = useLanguage();
   const tr = (key: Parameters<typeof t>[1]) => t(languageCode, key);
 
-  const [theme, setTheme] = useState<"dark" | "light">(() =>
-    (localStorage.getItem("pixocia-theme") as "dark" | "light") ?? "dark"
-  );
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    const v =
+      localStorage.getItem("picoxia-theme") ?? localStorage.getItem("pixocia-theme");
+    return (v as "dark" | "light") ?? "dark";
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("pixocia-theme", theme);
+    localStorage.setItem("picoxia-theme", theme);
+    localStorage.removeItem("pixocia-theme");
   }, [theme]);
 
   return (
@@ -36,7 +39,7 @@ function AppInner() {
                 <line x1="9" y1="21" x2="15" y2="21"/>
               </svg>
             </div>
-            <span className="logo-text">PIX<em>OCIA</em></span>
+            <span className="logo-text">PIC<em>OXIA</em></span>
           </div>
 
           <div className="navbar-stepper">
@@ -77,7 +80,7 @@ function AppInner() {
         </main>
 
         <footer className="site-footer">
-          <span><strong className="footer-brand">PIXOCIA</strong> </span>
+          <span><strong className="footer-brand">PICOXIA</strong> </span>
           <span>100% open source · 14 {tr("language").toLowerCase()}s</span>
         </footer>
       </div>

@@ -1,4 +1,4 @@
-// AUTO-GENERATED — edit fr.ts then run: npm run translate
+
 import { fr } from "./fr";
 import { en } from "./en";
 import { de } from "./de";

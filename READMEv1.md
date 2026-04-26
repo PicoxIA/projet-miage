@@ -1,4 +1,4 @@
-# PIXOCIA — Frontend
+# Picoxia — Frontend
 
 Formulaire de contact vétérinaire multilingue avec dictée vocale hors ligne (Vosk WebAssembly), 14 langues supportées.
 

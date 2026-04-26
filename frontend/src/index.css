@@ -10,10 +10,15 @@
   --green2:     oklch(0.58 0.15 152);
   --green-glow: oklch(0.70 0.17 152 / 0.15);
   --text:       oklch(0.94 0.008 238);
+  --text-label: oklch(0.86 0.012 238);
   --muted:      oklch(0.55 0.016 238);
   --danger:     oklch(0.68 0.20 25);
   --font-head:  'Sora', sans-serif;
   --font-body:  'DM Sans', sans-serif;
+  --radius-in:  12px;
+  --radius-ctl: 12px;
+  --ring-focus: 0 0 0 3px oklch(0.70 0.17 152 / 0.2);
+  --easing:     cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -68,8 +73,10 @@ body::before {
   --bg4:        oklch(0.83 0.012 238);
   --border:     oklch(0.72 0.015 238);
   --text:       oklch(0.12 0.018 240);
+  --text-label: oklch(0.32 0.02 250);
   --muted:      oklch(0.44 0.014 238);
   --green-glow: oklch(0.70 0.17 152 / 0.10);
+  --ring-focus: 0 0 0 3px oklch(0.70 0.17 152 / 0.18);
 }
 
 [data-theme="light"] body::before {
@@ -81,7 +88,7 @@ body::before {
 [data-theme="light"] body::after { opacity: 0.04; }
 
 /* Smooth theme crossfade on key properties only */
-body, .contact-card, .card-header, .card-footer, .voice-box, .navbar,
-.rs-input, .rs-picker-toggle, .rs-picker-menu {
-  transition: background-color 0.25s ease, border-color 0.2s ease, color 0.15s ease !important;
+body, .contact-card, .card-header, .card-footer, .voice-box, .form-section, .navbar,
+.rs-input, .rs-picker-toggle, .rs-picker-menu, .lang-pill, .btn-submit {
+  transition: background-color 0.25s ease, border-color 0.2s ease, color 0.15s ease, box-shadow 0.25s ease !important;
 }
