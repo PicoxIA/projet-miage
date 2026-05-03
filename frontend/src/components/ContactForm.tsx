@@ -7,6 +7,7 @@ import { LanguageSelector } from "./LanguageSelector";
 import { VoiceRecorder, type TranscriptionMode } from "./VoiceRecorder";
 import { useVoskRecognition } from "../hooks/useVoskRecognition";
 import { useWhisperRecognition } from "../hooks/useWhisperRecognition";
+import { useWebSpeechRecognition, isWebSpeechSupported } from "../hooks/useWebSpeechRecognition";
 import { checkWhisperHealth } from "../services/transcriptionApi";
 
 const LANG_FLAGS: Record<string, string> = {
@@ -168,10 +169,10 @@ export function ContactForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ subject?: boolean; message?: boolean }>({});
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>("auto");
-  const [activeDictationPath, setActiveDictationPath] = useState<"whisper" | "vosk" | null>(null);
+  const [activeDictationPath, setActiveDictationPath] = useState<"whisper" | "vosk" | "webspeech" | null>(null);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [highPrecisionError, setHighPrecisionError] = useState<string | null>(null);
-  const [lastEngine, setLastEngine] = useState<"whisper" | "vosk" | null>(null);
+  const [lastEngine, setLastEngine] = useState<"whisper" | "vosk" | "webspeech" | null>(null);
 
   const onWhisperText = (text: string) => {
     setPartial("");
@@ -192,6 +193,16 @@ export function ContactForm() {
     [languageCode]
   );
 
+  const webSpeech = useWebSpeechRecognition({
+    languageCode,
+    onFinalResult: (text) => {
+      setMessage((prev) => (prev ? `${prev} ${text}` : text));
+      setPartial("");
+      setLastEngine("webspeech");
+    },
+    onPartialResult: (text) => setPartial(text),
+  });
+
   const { status, errorMessage, start: startVosk, stop: stopVosk, analyserNode } = useVoskRecognition({
     modelUrl,
     onFinalResult: (text) => {
@@ -205,7 +216,8 @@ export function ContactForm() {
   const displayMessage = partial ? `${message}${message ? " " : ""}${partial}` : message;
   const isDictationLock =
     (activeDictationPath === "whisper" && (whisper.isRecording || whisper.isTranscribing)) ||
-    (activeDictationPath === "vosk" && (status === "listening" || status === "loading-model"));
+    (activeDictationPath === "vosk" && (status === "listening" || status === "loading-model")) ||
+    (activeDictationPath === "webspeech" && webSpeech.status === "listening");
   const effectiveLength = displayMessage.length;
   const msgOverLimit = effectiveLength > MAX_MSG;
   const isFormValid =
@@ -215,6 +227,7 @@ export function ContactForm() {
   const modeHint = useMemo(() => {
     if (transcriptionMode === "auto") return tr("modeHintAuto");
     if (transcriptionMode === "whisper") return tr("modeHintWhisper");
+    if (transcriptionMode === "webspeech") return tr("modeHintWebSpeech");
     return tr("modeHintOffline");
   }, [transcriptionMode, languageCode]);
 
@@ -222,6 +235,12 @@ export function ContactForm() {
     whisper.clearError();
     setVoiceNotice(null);
     setHighPrecisionError(null);
+
+    if (transcriptionMode === "webspeech") {
+      setActiveDictationPath("webspeech");
+      webSpeech.start();
+      return;
+    }
 
     if (transcriptionMode === "offline") {
       setActiveDictationPath("vosk");
@@ -254,6 +273,11 @@ export function ContactForm() {
   };
 
   const handleVoiceStop = async () => {
+    if (activeDictationPath === "webspeech") {
+      webSpeech.stop();
+      setActiveDictationPath(null);
+      return;
+    }
     if (activeDictationPath === "whisper") {
       try {
         await whisper.stopRecording();
@@ -274,11 +298,12 @@ export function ContactForm() {
     }
   };
 
-  const activeEngineDisplay: "none" | "whisper" | "vosk" = (() => {
+  const activeEngineDisplay: "none" | "whisper" | "vosk" | "webspeech" = (() => {
     if (activeDictationPath === "whisper" || whisper.isRecording || whisper.isTranscribing) {
       return "whisper";
     }
     if (activeDictationPath === "vosk") return "vosk";
+    if (activeDictationPath === "webspeech") return "webspeech";
     return "none";
   })();
 
@@ -354,6 +379,7 @@ export function ContactForm() {
     setHighPrecisionError(null);
     setLastEngine(null);
     whisper.clearError();
+    webSpeech.stop();
   };
 
   return (
@@ -464,6 +490,9 @@ export function ContactForm() {
               whisperError={whisper.error}
               lastEngine={lastEngine}
               pulseWaveform={activeDictationPath === "whisper" && whisper.isRecording}
+              webSpeechListening={webSpeech.status === "listening"}
+              webSpeechError={webSpeech.errorMessage ?? null}
+              webSpeechUnsupported={!isWebSpeechSupported()}
               notice={voiceNotice}
               highPrecisionBlockError={highPrecisionError}
             />

@@ -59,4 +59,9 @@ export const cs = {
   whisperErrorFallbackVosk: "Selhání šepotu — diktování přepnuto do režimu offline (Vosk).",
   whisperErrorHighPrecision: "Přepis šepotu není možný. Zkontrolujte backend.",
   lastEngine: "Poslední diktát",
+  modeWebSpeech: "Prohlížeč (webová řeč)",
+  engineWebSpeech: "Webová řeč",
+  modeHintWebSpeech: "Nativní rozpoznávání řeči v prohlížeči — vyžaduje připojení k internetu (doporučuje se Chrome).",
+  webSpeechUnsupported: "Rozhraní Web Speech API není tímto prohlížečem podporováno. Použijte Chrome nebo Edge.",
+  webSpeechListening: "Poslech (webová řeč)…",
 };

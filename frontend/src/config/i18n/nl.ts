@@ -59,4 +59,9 @@ export const nl = {
   whisperErrorFallbackVosk: "Fluisterstoring — dicteren overgeschakeld naar offline modus (Vosk).",
   whisperErrorHighPrecision: "Fluistertranscriptie niet mogelijk. Controleer de backend.",
   lastEngine: "Laatste dictaat",
+  modeWebSpeech: "Browser (Web Speech)",
+  engineWebSpeech: "Web Speech",
+  modeHintWebSpeech: "Native browser spraakherkenning — vereist internetverbinding (Chrome aanbevolen).",
+  webSpeechUnsupported: "Web Speech API wordt niet ondersteund door deze browser. Gebruik Chrome of Edge.",
+  webSpeechListening: "Luisteren (Web Speech)…",
 };

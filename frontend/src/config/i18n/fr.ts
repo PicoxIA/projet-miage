@@ -59,6 +59,11 @@ export const fr = {
   whisperErrorFallbackVosk: "Échec Whisper — dictée passée en mode offline (Vosk).",
   whisperErrorHighPrecision: "Transcription Whisper impossible. Vérifiez le backend.",
   lastEngine: "Dernière dictée",
+  modeWebSpeech: "Navigateur (Web Speech)",
+  engineWebSpeech: "Web Speech",
+  modeHintWebSpeech: "Reconnaissance vocale native du navigateur — nécessite une connexion internet (Chrome recommandé).",
+  webSpeechUnsupported: "Web Speech API non supportée par ce navigateur. Utilisez Chrome ou Edge.",
+  webSpeechListening: "Écoute (Web Speech)…",
 };
 
 export type TranslationKey = keyof typeof fr;

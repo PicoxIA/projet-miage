@@ -59,4 +59,9 @@ export const uk = {
   whisperErrorFallbackVosk: "Помилка шепоту — диктовка переведена в офлайн-режим (Vosk).",
   whisperErrorHighPrecision: "Стенограма прошепотіння неможлива. Перевірте бекенд.",
   lastEngine: "Остання диктовка",
+  modeWebSpeech: "Браузер (веб-мова)",
+  engineWebSpeech: "Веб-мовлення",
+  modeHintWebSpeech: "Розпізнавання мови в браузері — потрібне підключення до Інтернету (рекомендується Chrome).",
+  webSpeechUnsupported: "API веб-мовлення не підтримується цим веб-переглядачем. Використовуйте Chrome або Edge.",
+  webSpeechListening: "Слухати (веб-мовлення)…",
 };

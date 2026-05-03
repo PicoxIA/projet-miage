@@ -59,4 +59,9 @@ export const en = {
   whisperErrorFallbackVosk: "Whisper failure — dictation switched to offline mode (Vosk).",
   whisperErrorHighPrecision: "Whisper transcript not possible. Check backend.",
   lastEngine: "Last dictation",
+  modeWebSpeech: "Browser (Web Speech)",
+  engineWebSpeech: "Web Speech",
+  modeHintWebSpeech: "Native browser speech recognition — requires internet connection (Chrome recommended).",
+  webSpeechUnsupported: "Web Speech API not supported by this browser. Use Chrome or Edge.",
+  webSpeechListening: "Listen (Web Speech)…",
 };

@@ -59,4 +59,9 @@ export const ru = {
   whisperErrorFallbackVosk: "Whisper failure — диктовка переведена в автономный режим (Vosk).",
   whisperErrorHighPrecision: "Расшифровка шёпотом невозможна. Проверьте бэкэнд.",
   lastEngine: "Последняя диктовка",
+  modeWebSpeech: "Браузер (веб-речь)",
+  engineWebSpeech: "Веб-речь",
+  modeHintWebSpeech: "Встроенное распознавание речи в браузере — требуется подключение к Интернету (рекомендуется Chrome).",
+  webSpeechUnsupported: "API веб-речи не поддерживается этим браузером. Используйте Chrome или Edge.",
+  webSpeechListening: "Слушайте (веб-речь)...",
 };

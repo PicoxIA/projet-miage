@@ -4,7 +4,7 @@ import { MicIcon, StopIcon } from "./icons";
 
 type VoskStatus = "idle" | "loading-model" | "listening" | "error";
 
-export type TranscriptionMode = "auto" | "whisper" | "offline";
+export type TranscriptionMode = "auto" | "whisper" | "offline" | "webspeech";
 
 export type VoiceRecorderProps = {
   languageCode: string;
@@ -21,12 +21,16 @@ export type VoiceRecorderProps = {
   onModeChange: (m: TranscriptionMode) => void;
   modeDisabled: boolean;
   /** Whisper */
-  activeEngine: "none" | "whisper" | "vosk";
+  activeEngine: "none" | "whisper" | "vosk" | "webspeech";
   whisperRecording: boolean;
   whisperTranscribing: boolean;
   whisperError: string | null;
-  lastEngine: "whisper" | "vosk" | null;
+  lastEngine: "whisper" | "vosk" | "webspeech" | null;
   pulseWaveform: boolean;
+  /** Web Speech */
+  webSpeechListening: boolean;
+  webSpeechError: string | null;
+  webSpeechUnsupported: boolean;
   /** Messages info (fallback, etc.) */
   notice: string | null;
   highPrecisionBlockError: string | null;
@@ -129,6 +133,7 @@ const MODE_DATA: { value: TranscriptionMode; key: TranslationKey }[] = [
   { value: "auto", key: "modeAuto" },
   { value: "whisper", key: "modeWhisper" },
   { value: "offline", key: "modeOffline" },
+  { value: "webspeech", key: "modeWebSpeech" },
 ];
 
 export function VoiceRecorder({
@@ -149,10 +154,14 @@ export function VoiceRecorder({
   whisperError,
   lastEngine,
   pulseWaveform,
+  webSpeechListening,
+  webSpeechError,
+  webSpeechUnsupported,
   notice,
   highPrecisionBlockError,
 }: VoiceRecorderProps) {
   const isWhisperPath = activeEngine === "whisper" || whisperRecording || whisperTranscribing;
+  const isWebSpeechPath = activeEngine === "webspeech" || webSpeechListening;
 
   const isBusyVosk = status === "loading-model";
   const isListeningVosk = status === "listening";
@@ -160,6 +169,8 @@ export function VoiceRecorder({
   const isBusy = isBusyVosk || isTranscribingWhisper;
   const isListening = isWhisperPath
     ? whisperRecording && !whisperTranscribing
+    : isWebSpeechPath
+    ? webSpeechListening
     : isListeningVosk;
 
   const levelBarRef = useRef<HTMLDivElement | null>(null);
@@ -221,13 +232,12 @@ export function VoiceRecorder({
       return <span className="voice-status-text voice-status-text--inline">{t(languageCode, "loadingModel")}</span>;
     }
     if (isListening) {
+      const label = isWebSpeechPath
+        ? t(languageCode, "webSpeechListening")
+        : t(languageCode, "listening");
       return (
         <span className="voice-status-line">
-          <span className="voice-status-label">
-            {isWhisperPath
-              ? t(languageCode, "listening")
-              : t(languageCode, "listening")}
-          </span>
+          <span className="voice-status-label">{label}</span>
           <span className="voice-timer" aria-label="Recording time">
             {formatTime(displayElapsed)}
           </span>
@@ -238,8 +248,14 @@ export function VoiceRecorder({
   })();
 
   const showInterim = !isWhisperPath && Boolean(interimText);
+
+  const engineLabel = (e: typeof lastEngine) => {
+    if (e === "whisper") return t(languageCode, "engineWhisper");
+    if (e === "webspeech") return t(languageCode, "engineWebSpeech");
+    return t(languageCode, "engineVosk");
+  };
   const engineBadge = lastEngine
-    ? `${t(languageCode, "lastEngine")}: ${t(languageCode, lastEngine === "whisper" ? "engineWhisper" : "engineVosk")}`
+    ? `${t(languageCode, "lastEngine")}: ${engineLabel(lastEngine)}`
     : null;
 
   return (
@@ -331,11 +347,17 @@ export function VoiceRecorder({
           )}
         </div>
 
-        {status === "error" && errorMessage && !isWhisperPath && (
+        {status === "error" && errorMessage && !isWhisperPath && !isWebSpeechPath && (
           <p className="dictee-error">⚠ {errorMessage}</p>
         )}
         {isWhisperPath && whisperError && (
           <p className="dictee-error">⚠ {whisperError}</p>
+        )}
+        {webSpeechUnsupported && modeSelect === "webspeech" && (
+          <p className="dictee-error">⚠ {t(languageCode, "webSpeechUnsupported")}</p>
+        )}
+        {isWebSpeechPath && webSpeechError && (
+          <p className="dictee-error">⚠ {webSpeechError}</p>
         )}
       </div>
 

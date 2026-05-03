@@ -59,4 +59,9 @@ export const sr = {
   whisperErrorFallbackVosk: "Kvar šapata — diktat prebačen u offline režim (Vosk).",
   whisperErrorHighPrecision: "Transkript šapata nije moguć. Proverite pozadinu.",
   lastEngine: "Poslednji diktat",
+  modeWebSpeech: "Pregledač (veb govor)",
+  engineWebSpeech: "Veb govor",
+  modeHintWebSpeech: "Prepoznavanje govora u izvornom pregledaču — potrebna je internet veza (preporučuje se Chrome).",
+  webSpeechUnsupported: "API za veb-govor nije podržan u ovom pregledaču. Koristite Chrome ili Edge.",
+  webSpeechListening: "Slušajte (veb govor)…",
 };

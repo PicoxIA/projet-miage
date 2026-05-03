@@ -59,4 +59,9 @@ export const fi = {
   whisperErrorFallbackVosk: "Kuiskausvika — sanelu siirtyi offline-tilaan (Vosk).",
   whisperErrorHighPrecision: "Whisper-transkriptio ei ole mahdollinen. Tarkista taustaosa.",
   lastEngine: "Viimeisin sanelu",
+  modeWebSpeech: "Selain (verkkopuhe)",
+  engineWebSpeech: "Verkkopuhe",
+  modeHintWebSpeech: "Natiiviselaimen puheentunnistus — vaatii internetyhteyden (Chromen suositus).",
+  webSpeechUnsupported: "Tämä selain ei tue Web Speech API: a. Käytä Chromea tai Edgeä.",
+  webSpeechListening: "Kuuntele (verkkopuhe)...",
 };

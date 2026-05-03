@@ -59,4 +59,9 @@ export const pt = {
   whisperErrorFallbackVosk: "Falha de sussurro — ditado mudado para o modo offline (Vosk).",
   whisperErrorHighPrecision: "A transcrição do sussurro não é possível. Verifique o back-end.",
   lastEngine: "Último ditado",
+  modeWebSpeech: "Navegador (Web Speech)",
+  engineWebSpeech: "Web Speech",
+  modeHintWebSpeech: "Reconhecimento de fala nativo do navegador — requer conexão com a Internet (recomenda-se o Chrome).",
+  webSpeechUnsupported: "API Web Speech não suportada por este navegador. Use o Chrome ou o Edge.",
+  webSpeechListening: "Ouvir (Web Speech)…",
 };
