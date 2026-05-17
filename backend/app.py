@@ -14,6 +14,7 @@ from typing import Any, Optional
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from faster_whisper import WhisperModel
+from reports import reports_bp
 
 # Modèle chargé une seule fois au démarrage
 _whisper: Optional[WhisperModel] = None
@@ -29,6 +30,7 @@ def get_model() -> WhisperModel:
 def create_app() -> Flask:
     app = Flask(__name__)
     CORS(app)
+    app.register_blueprint(reports_bp)
 
     @app.get("/api/health")
     def health():
@@ -85,6 +87,73 @@ def create_app() -> Flask:
             )
 
         return jsonify({"text": text, "engine": "whisper"})
+
+    @app.post("/api/reports")
+    def create_report():
+        payload = request.get_json(silent=True) or {}
+        required_fields = ["text_original", "text_enrichi", "langue", "type_demande"]
+        missing_fields = [field for field in required_fields if not str(payload.get(field, "")).strip()]
+
+        if missing_fields:
+            return (
+                jsonify(
+                    {
+                        "error": "Champs manquants ou invalides.",
+                        "missing_fields": missing_fields,
+                    }
+                ),
+                400,
+            )
+
+        report = {
+            "text_original": str(payload["text_original"]).strip(),
+            "text_enrichi": str(payload["text_enrichi"]).strip(),
+            "langue": str(payload["langue"]).strip(),
+            "type_demande": str(payload["type_demande"]).strip(),
+            "date": datetime.now(timezone.utc),
+        }
+
+        date_value = payload.get("date")
+        if date_value:
+            try:
+                report["date"] = datetime.fromisoformat(str(date_value).replace("Z", "+00:00"))
+            except ValueError:
+                return jsonify({"error": "Le champ 'date' doit être au format ISO 8601."}), 400
+
+        try:
+            collection = get_reports_collection()
+            inserted_id = collection.insert_one(report).inserted_id
+        except Exception as exc:
+            return jsonify({"error": f"Impossible de sauvegarder le compte rendu: {exc!s}"}), 500
+
+        saved_report = {**report, "_id": inserted_id}
+        return jsonify(serialize_report(saved_report)), 201
+
+    @app.get("/api/reports")
+    def list_reports():
+        try:
+            collection = get_reports_collection()
+            reports = list(collection.find().sort("date", -1))
+        except Exception as exc:
+            return jsonify({"error": f"Impossible de récupérer les comptes rendus: {exc!s}"}), 500
+
+        return jsonify([serialize_report(report) for report in reports])
+
+    @app.get("/api/reports/<report_id>")
+    def get_report(report_id: str):
+        if not ObjectId.is_valid(report_id):
+            return jsonify({"error": "Identifiant MongoDB invalide."}), 400
+
+        try:
+            collection = get_reports_collection()
+            report = collection.find_one({"_id": ObjectId(report_id)})
+        except Exception as exc:
+            return jsonify({"error": f"Impossible de récupérer le compte rendu: {exc!s}"}), 500
+
+        if report is None:
+            return jsonify({"error": "Compte rendu introuvable."}), 404
+
+        return jsonify(serialize_report(report))
 
     return app
 
