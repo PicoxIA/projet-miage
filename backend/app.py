@@ -14,6 +14,7 @@ from typing import Any, Optional
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from faster_whisper import WhisperModel
+from enrich import enrich_bp
 from reports import reports_bp
 
 # Modèle chargé une seule fois au démarrage
@@ -30,6 +31,7 @@ def get_model() -> WhisperModel:
 def create_app() -> Flask:
     app = Flask(__name__)
     CORS(app)
+    app.register_blueprint(enrich_bp)
     app.register_blueprint(reports_bp)
 
     @app.get("/api/health")
