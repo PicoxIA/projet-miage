@@ -26,7 +26,7 @@ from faster_whisper import WhisperModel
 # ---------------------------------------------------------------------------
 
 OLLAMA_HOST  = os.getenv("OLLAMA_HOST",  "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
 LANGUAGE_NAMES: dict[str, str] = {
     "fr": "français",
