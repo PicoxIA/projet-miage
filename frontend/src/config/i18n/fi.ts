@@ -64,4 +64,12 @@ export const fi = {
   modeHintWebSpeech: "Natiiviselaimen puheentunnistus — vaatii internetyhteyden (Chromen suositus).",
   webSpeechUnsupported: "Tämä selain ei tue Web Speech API: a. Käytä Chromea tai Edgeä.",
   webSpeechListening: "Kuuntele (verkkopuhe)...",
+  formSectionEnrich: "Tekoälyrikastus",
+  enrichBtn: "Rikastaa tekoälyllä",
+  enriching: "Rikastetaan…",
+  enrichError: "Ollama-virhe. Varmista, että Ollama on käynnissä (ollama serve).",
+  enrichedLabel: "Rikastettu teksti",
+  originalLabel: "Alkuperäinen teksti",
+  enrichAccept: "Käytä",
+  enrichDiscard: "Hylkää",
 };

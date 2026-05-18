@@ -9,6 +9,7 @@ import { useVoskRecognition } from "../hooks/useVoskRecognition";
 import { useWhisperRecognition } from "../hooks/useWhisperRecognition";
 import { useWebSpeechRecognition, isWebSpeechSupported } from "../hooks/useWebSpeechRecognition";
 import { checkWhisperHealth } from "../services/transcriptionApi";
+import { enrichText } from "../services/enrichmentApi";
 
 const LANG_FLAGS: Record<string, string> = {
   fr: "🇫🇷", en: "🇺🇸", de: "🇩🇪", sr: "🇷🇸", el: "🇬🇷",
@@ -173,6 +174,9 @@ export function ContactForm() {
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [highPrecisionError, setHighPrecisionError] = useState<string | null>(null);
   const [lastEngine, setLastEngine] = useState<"whisper" | "vosk" | "webspeech" | null>(null);
+  const [enrichedText, setEnrichedText] = useState<string | null>(null);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
 
   const onWhisperText = (text: string) => {
     setPartial("");
@@ -363,6 +367,28 @@ export function ContactForm() {
     }
   };
 
+  const handleEnrich = async () => {
+    setEnrichError(null);
+    setEnrichedText(null);
+    setIsEnriching(true);
+    try {
+      const result = await enrichText(displayMessage.trim(), languageCode);
+      setEnrichedText(result.text_enrichi);
+    } catch (e) {
+      setEnrichError(tr("enrichError"));
+    } finally {
+      setIsEnriching(false);
+    }
+  };
+
+  const handleEnrichAccept = () => {
+    setMessage(enrichedText ?? "");
+    setPartial("");
+    setEnrichedText(null);
+  };
+
+  const handleEnrichDiscard = () => setEnrichedText(null);
+
   const handleReset = () => {
     setSent(false);
     setSubmittedAt(null);
@@ -378,6 +404,8 @@ export function ContactForm() {
     setVoiceNotice(null);
     setHighPrecisionError(null);
     setLastEngine(null);
+    setEnrichedText(null);
+    setEnrichError(null);
     whisper.clearError();
     webSpeech.stop();
   };
@@ -524,6 +552,43 @@ export function ContactForm() {
                 <p className="field-error" role="alert">{tr("errorMessageRequired")}</p>
               )}
             </div>
+          </div>
+
+          <div className="form-section" data-section="enrich">
+            <h3 className="form-section-title">{tr("formSectionEnrich")}</h3>
+            <button
+              className={`btn-enrich${isEnriching ? " btn-enrich--loading" : ""}`}
+              type="button"
+              onClick={handleEnrich}
+              disabled={!displayMessage.trim() || isDictationLock || isEnriching || isSubmitting}
+            >
+              {isEnriching ? tr("enriching") : tr("enrichBtn")}
+            </button>
+            {enrichError && (
+              <p className="enrich-error" role="alert">{enrichError}</p>
+            )}
+            {enrichedText && (
+              <div className="enrich-panel">
+                <div className="enrich-cols">
+                  <div className="enrich-col">
+                    <span className="enrich-col-label">{tr("originalLabel")}</span>
+                    <p className="enrich-col-text">{displayMessage}</p>
+                  </div>
+                  <div className="enrich-col enrich-col--enriched">
+                    <span className="enrich-col-label">{tr("enrichedLabel")}</span>
+                    <p className="enrich-col-text">{enrichedText}</p>
+                  </div>
+                </div>
+                <div className="enrich-panel-actions">
+                  <button className="btn-enrich-accept" type="button" onClick={handleEnrichAccept}>
+                    {tr("enrichAccept")}
+                  </button>
+                  <button className="btn-enrich-discard" type="button" onClick={handleEnrichDiscard}>
+                    {tr("enrichDiscard")}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {submitError && (

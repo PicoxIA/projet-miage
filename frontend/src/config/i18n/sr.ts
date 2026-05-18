@@ -64,4 +64,12 @@ export const sr = {
   modeHintWebSpeech: "Prepoznavanje govora u izvornom pregledaču — potrebna je internet veza (preporučuje se Chrome).",
   webSpeechUnsupported: "API za veb-govor nije podržan u ovom pregledaču. Koristite Chrome ili Edge.",
   webSpeechListening: "Slušajte (veb govor)…",
+  formSectionEnrich: "AI obogaćivanje",
+  enrichBtn: "Obogati sa AI",
+  enriching: "Obogaćivanje…",
+  enrichError: "Greška Ollama. Proverite da li Ollama radi (ollama serve).",
+  enrichedLabel: "Obogaćeni tekst",
+  originalLabel: "Originalni tekst",
+  enrichAccept: "Koristi",
+  enrichDiscard: "Odbaci",
 };

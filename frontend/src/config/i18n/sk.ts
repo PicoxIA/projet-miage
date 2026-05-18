@@ -64,4 +64,12 @@ export const sk = {
   modeHintWebSpeech: "Prirodzené rozpoznávanie reči prehliadača — vyžaduje pripojenie k internetu (odporúča sa prehliadač Chrome).",
   webSpeechUnsupported: "Rozhranie Web Speech API nie je podporované týmto prehliadačom. Použite prehliadač Chrome alebo Edge.",
   webSpeechListening: "Počúvanie (webová reč)…",
+  formSectionEnrich: "Obohatenie AI",
+  enrichBtn: "Obohatiť pomocou AI",
+  enriching: "Obohacovanie…",
+  enrichError: "Chyba Ollama. Uistite sa, že Ollama beží (ollama serve).",
+  enrichedLabel: "Obohatený text",
+  originalLabel: "Pôvodný text",
+  enrichAccept: "Použiť",
+  enrichDiscard: "Zamietnuť",
 };

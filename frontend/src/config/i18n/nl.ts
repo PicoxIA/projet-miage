@@ -64,4 +64,12 @@ export const nl = {
   modeHintWebSpeech: "Native browser spraakherkenning — vereist internetverbinding (Chrome aanbevolen).",
   webSpeechUnsupported: "Web Speech API wordt niet ondersteund door deze browser. Gebruik Chrome of Edge.",
   webSpeechListening: "Luisteren (Web Speech)…",
+  formSectionEnrich: "AI-verrijking",
+  enrichBtn: "Verrijken met AI",
+  enriching: "Verrijken…",
+  enrichError: "Ollama-fout. Zorg ervoor dat Ollama actief is (ollama serve).",
+  enrichedLabel: "Verrijkte tekst",
+  originalLabel: "Originele tekst",
+  enrichAccept: "Gebruiken",
+  enrichDiscard: "Negeren",
 };

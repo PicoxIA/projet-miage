@@ -64,4 +64,12 @@ export const uk = {
   modeHintWebSpeech: "Розпізнавання мови в браузері — потрібне підключення до Інтернету (рекомендується Chrome).",
   webSpeechUnsupported: "API веб-мовлення не підтримується цим веб-переглядачем. Використовуйте Chrome або Edge.",
   webSpeechListening: "Слухати (веб-мовлення)…",
+  formSectionEnrich: "Збагачення ШІ",
+  enrichBtn: "Збагатити за допомогою ШІ",
+  enriching: "Збагачення…",
+  enrichError: "Помилка Ollama. Переконайтеся, що Ollama запущена (ollama serve).",
+  enrichedLabel: "Збагачений текст",
+  originalLabel: "Оригінальний текст",
+  enrichAccept: "Використати",
+  enrichDiscard: "Відхилити",
 };

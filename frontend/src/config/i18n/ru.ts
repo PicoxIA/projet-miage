@@ -64,4 +64,12 @@ export const ru = {
   modeHintWebSpeech: "Встроенное распознавание речи в браузере — требуется подключение к Интернету (рекомендуется Chrome).",
   webSpeechUnsupported: "API веб-речи не поддерживается этим браузером. Используйте Chrome или Edge.",
   webSpeechListening: "Слушайте (веб-речь)...",
+  formSectionEnrich: "Обогащение ИИ",
+  enrichBtn: "Обогатить с ИИ",
+  enriching: "Обогащение…",
+  enrichError: "Ошибка Ollama. Убедитесь, что Ollama запущена (ollama serve).",
+  enrichedLabel: "Обогащённый текст",
+  originalLabel: "Исходный текст",
+  enrichAccept: "Использовать",
+  enrichDiscard: "Отклонить",
 };

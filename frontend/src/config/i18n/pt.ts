@@ -64,4 +64,12 @@ export const pt = {
   modeHintWebSpeech: "Reconhecimento de fala nativo do navegador — requer conexão com a Internet (recomenda-se o Chrome).",
   webSpeechUnsupported: "API Web Speech não suportada por este navegador. Use o Chrome ou o Edge.",
   webSpeechListening: "Ouvir (Web Speech)…",
+  formSectionEnrich: "Enriquecimento IA",
+  enrichBtn: "Enriquecer com IA",
+  enriching: "Enriquecendo…",
+  enrichError: "Erro Ollama. Certifique-se de que o Ollama está em execução (ollama serve).",
+  enrichedLabel: "Texto enriquecido",
+  originalLabel: "Texto original",
+  enrichAccept: "Usar",
+  enrichDiscard: "Descartar",
 };

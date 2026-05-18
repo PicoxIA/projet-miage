@@ -64,6 +64,14 @@ export const fr = {
   modeHintWebSpeech: "Reconnaissance vocale native du navigateur — nécessite une connexion internet (Chrome recommandé).",
   webSpeechUnsupported: "Web Speech API non supportée par ce navigateur. Utilisez Chrome ou Edge.",
   webSpeechListening: "Écoute (Web Speech)…",
+  formSectionEnrich: "Enrichissement IA",
+  enrichBtn: "Enrichir avec l'IA",
+  enriching: "Enrichissement en cours…",
+  enrichError: "Erreur Ollama. Vérifiez qu'Ollama est lancé (ollama serve).",
+  enrichedLabel: "Texte enrichi",
+  originalLabel: "Texte original",
+  enrichAccept: "Utiliser",
+  enrichDiscard: "Ignorer",
 };
 
 export type TranslationKey = keyof typeof fr;

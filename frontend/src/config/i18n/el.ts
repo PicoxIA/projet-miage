@@ -64,4 +64,12 @@ export const el = {
   modeHintWebSpeech: "Η εγγενής αναγνώριση ομιλίας του προγράμματος περιήγησης — απαιτεί σύνδεση στο διαδίκτυο (συνιστάται το Chrome).",
   webSpeechUnsupported: "Το Web Speech API δεν υποστηρίζεται από αυτό το πρόγραμμα περιήγησης. Χρησιμοποιήστε το Chrome ή το Edge.",
   webSpeechListening: "Ακούστε (Διαδικτυακή Ομιλία)…",
+  formSectionEnrich: "Εμπλουτισμός ΑΙ",
+  enrichBtn: "Εμπλουτισμός με ΑΙ",
+  enriching: "Εμπλουτισμός…",
+  enrichError: "Σφάλμα Ollama. Βεβαιωθείτε ότι το Ollama εκτελείται (ollama serve).",
+  enrichedLabel: "Εμπλουτισμένο κείμενο",
+  originalLabel: "Αρχικό κείμενο",
+  enrichAccept: "Χρήση",
+  enrichDiscard: "Απόρριψη",
 };
