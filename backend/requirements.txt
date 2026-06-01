@@ -2,3 +2,4 @@ flask
 flask-cors
 faster-whisper
 ollama
+pymongo

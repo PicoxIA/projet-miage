@@ -3,3 +3,5 @@
 *.pdf
 l.code
 PROJECT_DOCUMENTATION.md
+__pycache__/
+*.pyc

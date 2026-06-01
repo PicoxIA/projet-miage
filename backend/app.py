@@ -20,6 +20,7 @@ import ollama as ollama_lib
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from faster_whisper import WhisperModel
+from reports import reports_bp
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -93,6 +94,7 @@ Enriched text:"""
 def create_app() -> Flask:
     app = Flask(__name__)
     CORS(app)
+    app.register_blueprint(reports_bp)
 
     # --- Whisper health ---
     @app.get("/api/health")
