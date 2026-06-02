@@ -13,6 +13,7 @@
 
 import os
 import tempfile
+import time
 import uuid
 from typing import Any, Optional
 
@@ -28,6 +29,22 @@ from reports import reports_bp
 
 OLLAMA_HOST  = os.getenv("OLLAMA_HOST",  "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+
+OLLAMA_GENERATE_OPTIONS: dict[str, Any] = {
+    "temperature": 0.1,
+    "top_p": 0.8,
+    "num_predict": 300,
+    "num_ctx": 2048,
+}
+
+OLLAMA_SHORT_GENERATE_OPTIONS: dict[str, Any] = {
+    "temperature": 0.1,
+    "top_p": 0.8,
+    "num_predict": 140,
+    "num_ctx": 1024,
+}
+
+SHORT_SOURCE_MAX_LEN = 80
 
 LANGUAGE_NAMES: dict[str, str] = {
     "fr": "français",
@@ -69,22 +86,73 @@ def get_ollama_client() -> ollama_lib.Client:
 
 
 def build_enrich_prompt(text: str, lang_name: str) -> str:
-    return f"""You are an expert veterinary assistant. Your task is to enrich and structure a veterinary radiological report.
+    return f"""Tu es un assistant vétérinaire. Produis TOUJOURS un bilan structuré en {lang_name}, sans inventer d'information médicale.
 
-Response language: {lang_name}
+Format obligatoire :
 
-Rules:
-- Correct all grammar and spelling mistakes
-- Enrich the vocabulary with appropriate veterinary technical terms
-- Improve the formatting and structure (sections, line breaks)
-- Preserve ALL original medical information (numerical values, diagnoses, measurements)
-- Respond ONLY with the enriched text, without any comments or explanations
-- Keep the same language as the input text ({lang_name})
+Compte rendu vétérinaire
 
-Text to enrich:
+THORAX :
+...
+
+ABDOMEN :
+...
+
+BASSIN :
+...
+
+CONCLUSION :
+...
+
+Règles :
+- Réponds UNIQUEMENT avec le bilan final, sans expliquer les règles.
+- Section sans donnée dans le source : "Aucune information renseignée."
+- N'invente jamais : radiographie, échographie, scanner, diagnostic, traitement, chiffre, fracture, hématome, hyperinflation, âge, propriétaire, examen non mentionné.
+- Toux, respiration, gêne respiratoire → THORAX ; hanche, boiterie, patte arrière → BASSIN ; vomissement, abdomen, estomac, intestin, digestion → ABDOMEN.
+- Sections déjà présentes : conserver les informations et améliorer la formulation.
+- "Dans la partie X, ajouter :" : supprimer l'instruction, intégrer le contenu dans la section X.
+- Conclusion : résumer uniquement les informations présentes ; une seule section renseignée → conclusion limitée à cette section.
+- Conserver exactement dates, VHS, angles et degrés du source.
+
+Exemple — source : "Le chien tousse."
+THORAX : Le chien présente une toux.
+ABDOMEN : Aucune information renseignée.
+BASSIN : Aucune information renseignée.
+CONCLUSION : Les informations fournies rapportent une toux, sans autre élément renseigné.
+
+Texte source :
 {text}
 
-Enriched text:"""
+Bilan :"""
+
+
+def sanitize_enriched_output(raw: str) -> str:
+    text = raw.strip()
+    for marker in ("Bilan :", "Bilan:", "Texte final :", "Texte final:", "Enriched text:", "Enriched text :"):
+        lower = text.lower()
+        key = marker.lower()
+        if key in lower:
+            idx = lower.rfind(key)
+            tail = text[idx + len(marker) :].strip()
+            if tail:
+                text = tail
+    return text
+
+
+def is_short_source(text: str) -> bool:
+    return len(text) < SHORT_SOURCE_MAX_LEN
+
+
+def run_ollama_enrich(prompt: str, *, short: bool = False) -> str:
+    client = get_ollama_client()
+    options = OLLAMA_SHORT_GENERATE_OPTIONS if short else OLLAMA_GENERATE_OPTIONS
+    started = time.perf_counter()
+    response = client.generate(model=OLLAMA_MODEL, prompt=prompt, options=options)
+    print(
+        f"Ollama enrich done in {time.perf_counter() - started:.2f}s "
+        f"(num_predict={options['num_predict']})"
+    )
+    return sanitize_enriched_output(response.response)
 
 
 # ---------------------------------------------------------------------------
@@ -167,11 +235,10 @@ def create_app() -> Flask:
 
         lang_name = LANGUAGE_NAMES.get(lang_code, lang_code)
         prompt    = build_enrich_prompt(text, lang_name)
+        short     = is_short_source(text)
 
         try:
-            client   = get_ollama_client()
-            response = client.generate(model=OLLAMA_MODEL, prompt=prompt)
-            enriched = response.response.strip()
+            enriched = run_ollama_enrich(prompt, short=short)
         except Exception as e:
             return jsonify({
                 "error": f"Erreur Ollama : {e!s}",

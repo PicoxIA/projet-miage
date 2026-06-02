@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Input, SelectPicker } from "rsuite";
 import { LANGUAGES } from "../config/languages";
 import { t, type TranslationKey } from "../config/i18n/index";
@@ -9,7 +9,9 @@ import { useVoskRecognition } from "../hooks/useVoskRecognition";
 import { useWhisperRecognition } from "../hooks/useWhisperRecognition";
 import { useWebSpeechRecognition, isWebSpeechSupported } from "../hooks/useWebSpeechRecognition";
 import { checkWhisperHealth } from "../services/transcriptionApi";
-import { enrichText } from "../services/enrichmentApi";
+import { EnrichError, enrichText } from "../services/enrichmentApi";
+import { saveReport } from "../services/reportsApi";
+import { DEMO_VET_REPORT } from "../config/demoVetReport";
 
 const LANG_FLAGS: Record<string, string> = {
   fr: "🇫🇷", en: "🇺🇸", de: "🇩🇪", sr: "🇷🇸", el: "🇬🇷",
@@ -17,13 +19,10 @@ const LANG_FLAGS: Record<string, string> = {
   pt: "🇵🇹", sk: "🇸🇰", es: "🇪🇸", cs: "🇨🇿",
 };
 
-const MAX_MSG = 500;
+const MAX_MSG = 3000;
 
-/** Envoie simulé (aucun réseau réel) — rejette si le sujet contient __SIMULER_ERREUR__ en dev. */
-function mockSendSimulated(shouldFail: boolean): Promise<void> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => (shouldFail ? reject(new Error("simulated")) : resolve()), 650);
-  });
+function resolveTypeDemande(requestType: string): string {
+  return requestType.trim() || "compte_rendu";
 }
 
 function addRipple(e: React.MouseEvent<HTMLButtonElement>) {
@@ -175,6 +174,7 @@ export function ContactForm() {
   const [highPrecisionError, setHighPrecisionError] = useState<string | null>(null);
   const [lastEngine, setLastEngine] = useState<"whisper" | "vosk" | "webspeech" | null>(null);
   const [enrichedText, setEnrichedText] = useState<string | null>(null);
+  const [textOriginalSnapshot, setTextOriginalSnapshot] = useState<string | null>(null);
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
 
@@ -312,23 +312,11 @@ export function ContactForm() {
   })();
 
   const messageFieldRef = useRef<HTMLDivElement>(null);
-  // Auto-hauteur du textarea (uniquement présentation, sans logique métier)
-  useLayoutEffect(() => {
-    const root = messageFieldRef.current;
-    if (!root) return;
-    const ta = root.querySelector("textarea");
-    if (!ta) return;
-    ta.style.overflow = "hidden";
-    const minH = 100;
-    const maxH = 320;
-    ta.style.height = `${minH}px`;
-    const next = Math.min(maxH, Math.max(minH, ta.scrollHeight));
-    ta.style.height = `${next}px`;
-  }, [displayMessage, isSubmitting]);
 
   const handleMessageChange = (v: string) => {
     setPartial("");
     setMessage(v);
+    setTextOriginalSnapshot(null);
     setFieldErrors((e) => ({ ...e, message: false }));
   };
 
@@ -348,34 +336,63 @@ export function ContactForm() {
     if (emptySubject || emptyMessage) return;
     if (msgOverLimit) return;
 
-    const simulateFailure =
-      import.meta.env.DEV && subject.includes("__SIMULER_ERREUR__");
+    if (import.meta.env.DEV && subject.includes("__SIMULER_ERREUR__")) {
+      setSubmitError("Erreur lors de la sauvegarde du rapport.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const textToSend = displayMessage.trim();
-      await mockSendSimulated(simulateFailure);
-      // Figement du texte affiché (y compris la dernière portion non finalisée par Vosk)
+      const textEnrichi = (enrichedText ?? textToSend).trim();
+      const textOriginal = (textOriginalSnapshot ?? textToSend).trim();
+
+      const saved = await saveReport({
+        text_original: textOriginal,
+        text_enrichi: textEnrichi,
+        langue: languageCode,
+        type_demande: resolveTypeDemande(requestType),
+      });
+
       setPartial("");
       setMessage(textToSend);
-      setSubmittedAt(new Date().toISOString());
+      setSubmittedAt(saved.date ?? new Date().toISOString());
       setSent(true);
-    } catch {
-      setSubmitError(tr("errorSubmit"));
+    } catch (err) {
+      console.error("saveReport failed:", err);
+      setSubmitError("Erreur lors de la sauvegarde du rapport.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const resolveEnrichErrorMessage = (err: unknown): string => {
+    if (err instanceof EnrichError) {
+      if (err.kind === "timeout") return tr("enrichErrorTimeout");
+      if (err.kind === "network") return tr("enrichErrorNetwork");
+      return tr("enrichErrorBackend");
+    }
+    return tr("enrichError");
+  };
+
   const handleEnrich = async () => {
+    if (isEnriching) return;
+    const original = displayMessage.trim();
+    if (!original) {
+      setFieldErrors((e) => ({ ...e, message: true }));
+      return;
+    }
     setEnrichError(null);
     setEnrichedText(null);
+    setTextOriginalSnapshot(original);
     setIsEnriching(true);
     try {
-      const result = await enrichText(displayMessage.trim(), languageCode);
+      const result = await enrichText(original, languageCode);
       setEnrichedText(result.text_enrichi);
     } catch (e) {
-      setEnrichError(tr("enrichError"));
+      console.error("enrichText failed:", e);
+      setEnrichError(resolveEnrichErrorMessage(e));
+      setTextOriginalSnapshot(null);
     } finally {
       setIsEnriching(false);
     }
@@ -387,7 +404,10 @@ export function ContactForm() {
     setEnrichedText(null);
   };
 
-  const handleEnrichDiscard = () => setEnrichedText(null);
+  const handleEnrichDiscard = () => {
+    setEnrichedText(null);
+    setTextOriginalSnapshot(null);
+  };
 
   const handleReset = () => {
     setSent(false);
@@ -405,6 +425,7 @@ export function ContactForm() {
     setHighPrecisionError(null);
     setLastEngine(null);
     setEnrichedText(null);
+    setTextOriginalSnapshot(null);
     setEnrichError(null);
     whisper.clearError();
     webSpeech.stop();
@@ -545,7 +566,7 @@ export function ContactForm() {
                 className="input-message"
                 value={displayMessage}
                 onChange={handleMessageChange}
-                placeholder={tr("messagePlaceholder")}
+                placeholder={DEMO_VET_REPORT}
                 disabled={isSubmitting}
               />
               {fieldErrors.message && (
@@ -561,9 +582,16 @@ export function ContactForm() {
               type="button"
               onClick={handleEnrich}
               disabled={!displayMessage.trim() || isDictationLock || isEnriching || isSubmitting}
+              aria-busy={isEnriching}
             >
               {isEnriching ? tr("enriching") : tr("enrichBtn")}
             </button>
+            {isEnriching && (
+              <p className="enrich-loading" role="status" aria-live="polite">
+                <span className="enrich-loading-spinner" aria-hidden />
+                {tr("enrichingWait")}
+              </p>
+            )}
             {enrichError && (
               <p className="enrich-error" role="alert">{enrichError}</p>
             )}

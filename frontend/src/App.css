@@ -195,21 +195,21 @@
 /* Textarea (message) */
 .rs-input[as="textarea"],
 textarea.rs-input,
-.input-message[as="textarea"] {
-  height: auto !important;
-  min-height: 100px !important;
-  max-height: 320px !important;
+.input-message[as="textarea"],
+.message-field textarea.rs-input {
+  min-height: 220px !important;
+  max-height: 520px !important;
+  height: 220px !important;
   padding: 12px 14px !important;
   line-height: 1.55 !important;
   font-size: 14.5px !important;
-  resize: none;
-  field-sizing: content;
-  overflow-y: auto;
-}
-@supports not (field-sizing: content) {
-  .rs-input[as="textarea"], textarea.rs-input, .input-message[as="textarea"] { min-height: 100px; }
+  resize: vertical !important;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 .message-field .rs-input:focus { box-shadow: var(--ring-focus) !important; }
+.message-field .field-label-row { position: relative; z-index: 1; }
 
 /* — Mode transcription (Whisper / Vosk) — */
 .voice-transcription-ui { margin-bottom: 8px; }
@@ -761,6 +761,24 @@ textarea.rs-input,
 .btn-enrich--loading { opacity: 0.7; cursor: wait; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 0%,100%{opacity:0.7} 50%{opacity:0.45} }
 
+.enrich-loading {
+  display: flex; align-items: center; gap: 10px;
+  margin: 10px 0 0; padding: 10px 12px;
+  font-size: 13px; line-height: 1.45; color: var(--green);
+  background: oklch(0.70 0.17 152 / 0.08);
+  border: 1px solid oklch(0.70 0.17 152 / 0.28);
+  border-radius: 10px;
+  animation: fadeUp 0.3s ease both;
+}
+.enrich-loading-spinner {
+  width: 16px; height: 16px; flex-shrink: 0;
+  border: 2px solid oklch(0.70 0.17 152 / 0.35);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: enrich-spin 0.75s linear infinite;
+}
+@keyframes enrich-spin { to { transform: rotate(360deg); } }
+
 .enrich-error {
   font-size: 12.5px; color: var(--danger); margin: 0;
   padding: 8px 12px; border-radius: 10px;
@@ -801,7 +819,7 @@ textarea.rs-input,
 .enrich-col-text {
   font-size: 13px; line-height: 1.55; color: var(--text);
   white-space: pre-wrap; margin: 0;
-  max-height: 180px; overflow-y: auto;
+  max-height: 280px; overflow-y: auto;
   scrollbar-width: thin; scrollbar-color: var(--green) var(--bg3);
 }
 .enrich-panel-actions {
