@@ -104,7 +104,7 @@ function Waveform({
   return (
     <div className="waveform">
       {Array.from({ length: N_BARS }, (_, i) => (
-        <div key={i} className="wbar idle" ref={(el) => { barsRef.current[i] = el; }} />
+        <div key={i} className="wbar idle wbar--gradient" ref={(el) => { barsRef.current[i] = el; }} />
       ))}
     </div>
   );
@@ -288,7 +288,7 @@ export function VoiceRecorder({
       </div>
 
       <div
-        className={`voice-box${isListening ? " recording" : ""}${isBusy ? " loading" : ""}`}
+        className={`voice-box voice-box--glass${isListening ? " recording" : ""}${isBusy ? " loading" : ""}`}
         aria-busy={isBusy}
       >
         <div className="voice-top">

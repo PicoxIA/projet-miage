@@ -28,6 +28,7 @@ function AppInner() {
       <div className="app-layout">
         <div className="orb orb-tl" />
         <div className="orb orb-br" />
+        <div className="orb orb-accent" />
 
         <nav className="navbar">
           <div className="navbar-logo">
