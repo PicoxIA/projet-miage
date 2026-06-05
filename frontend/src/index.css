@@ -1,35 +1,38 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 
 :root {
-  --bg:           oklch(0.10 0.018 240);
-  --bg2:          oklch(0.14 0.018 238);
-  --bg3:          oklch(0.18 0.016 238);
-  --bg4:          oklch(0.22 0.015 238);
-  --border:       oklch(0.28 0.018 238);
-  --green:        oklch(0.70 0.17 152);
-  --green2:       oklch(0.58 0.15 152);
-  --green-glow:   oklch(0.70 0.17 152 / 0.15);
-  --text:         oklch(0.94 0.008 238);
-  --text-label:   oklch(0.86 0.012 238);
-  --muted:        oklch(0.55 0.016 238);
+  --bg:           oklch(0.08 0.02 260);
+  --bg2:          oklch(0.12 0.02 255);
+  --bg3:          oklch(0.16 0.018 250);
+  --bg4:          oklch(0.20 0.016 248);
+  --border:       oklch(0.28 0.02 250);
+  --green:        oklch(0.75 0.19 155);
+  --green2:       oklch(0.60 0.17 155);
+  --green-glow:   oklch(0.75 0.19 155 / 0.18);
+  --text:         oklch(0.95 0.005 250);
+  --text-label:   oklch(0.86 0.012 250);
+  --muted:        oklch(0.55 0.016 250);
   --danger:       oklch(0.68 0.20 25);
   --font-head:    'Sora', sans-serif;
   --font-body:    'DM Sans', sans-serif;
-  --radius-in:    12px;
-  --radius-ctl:   12px;
-  --ring-focus:   0 0 0 3px oklch(0.70 0.17 152 / 0.2);
+  --radius-in:    16px;
+  --radius-ctl:   14px;
+  --ring-focus:   0 0 0 3px oklch(0.75 0.19 155 / 0.25);
   --easing:       cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* ── Glassmorphism tokens ────────────────────────── */
-  --glass:        oklch(0.13 0.018 238 / 0.65);
-  --glass-border: oklch(0.38 0.02 238 / 0.25);
-  --glass-blur:   blur(20px) saturate(1.4);
-  --shadow-glass: 0 8px 32px oklch(0 0 0 / 0.3), inset 0 1px 0 oklch(1 0 0 / 0.04);
+  /* ── Glassmorphism ──────────────────────────────── */
+  --glass:        oklch(0.12 0.025 260 / 0.55);
+  --glass-border: oklch(0.45 0.03 260 / 0.18);
+  --glass-blur:   blur(24px) saturate(1.6);
+  --shadow-glass: 0 8px 32px oklch(0 0 0 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.06);
+  --shadow-glow:  0 0 60px oklch(0.75 0.19 155 / 0.12), 0 0 120px oklch(0.60 0.18 290 / 0.06);
 
   /* ── Accent palette ─────────────────────────────── */
-  --accent-purple: oklch(0.65 0.18 290);
-  --accent-blue:   oklch(0.68 0.15 230);
-  --gradient-hero: linear-gradient(135deg, var(--green), var(--accent-blue));
+  --cyan:          oklch(0.78 0.14 195);
+  --purple:        oklch(0.65 0.22 290);
+  --pink:          oklch(0.70 0.20 340);
+  --gradient-hero: linear-gradient(135deg, var(--green) 0%, var(--cyan) 50%, var(--purple) 100%);
+  --gradient-card: linear-gradient(160deg, oklch(0.14 0.03 280 / 0.5) 0%, oklch(0.10 0.025 200 / 0.4) 50%, oklch(0.12 0.02 155 / 0.3) 100%);
 
   /* ── Spring easing ──────────────────────────────── */
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -49,36 +52,40 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Radial gradient ambient glow */
+/* ── Dramatic ambient gradient background ─────────── */
 body::after {
   content: '';
   position: fixed; inset: 0;
   background:
-    radial-gradient(ellipse 70% 50% at 50% 0%, oklch(0.70 0.17 152 / 0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 60% at 80% 100%, oklch(0.65 0.18 290 / 0.04) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 60% at 20% 10%, oklch(0.75 0.19 155 / 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 70% at 80% 20%, oklch(0.60 0.22 290 / 0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 50% at 50% 90%, oklch(0.78 0.14 195 / 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, oklch(0.08 0.02 260) 0%, oklch(0.05 0.015 280) 100%);
   pointer-events: none;
   z-index: 0;
 }
 
-/* Noise texture overlay */
+/* Noise texture */
 body::before {
   content: '';
   position: fixed; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.028;
+  opacity: 0.03;
   pointer-events: none;
   z-index: 999;
 }
 
-/* Grid lines */
+/* Grid — very subtle */
 #root::before {
   content: '';
   position: fixed; inset: 0;
   background-image:
-    linear-gradient(oklch(0.28 0.018 238 / 0.3) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(0.28 0.018 238 / 0.3) 1px, transparent 1px);
-  background-size: 56px 56px;
+    linear-gradient(oklch(0.30 0.02 260 / 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.30 0.02 260 / 0.15) 1px, transparent 1px);
+  background-size: 60px 60px;
   pointer-events: none; z-index: 0;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 40%, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 40%, black 30%, transparent 70%);
 }
 
 #root { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
@@ -92,38 +99,42 @@ body::before {
 
 /* ── Light theme ─────────────────────────────────── */
 [data-theme="light"] {
-  --bg:           oklch(0.97 0.005 240);
-  --bg2:          oklch(0.93 0.008 238);
-  --bg3:          oklch(0.89 0.010 238);
-  --bg4:          oklch(0.83 0.012 238);
-  --border:       oklch(0.72 0.015 238);
-  --text:         oklch(0.12 0.018 240);
-  --text-label:   oklch(0.32 0.02 250);
-  --muted:        oklch(0.44 0.014 238);
-  --green-glow:   oklch(0.70 0.17 152 / 0.10);
-  --ring-focus:   0 0 0 3px oklch(0.70 0.17 152 / 0.18);
+  --bg:           oklch(0.96 0.008 250);
+  --bg2:          oklch(0.92 0.01 248);
+  --bg3:          oklch(0.88 0.012 248);
+  --bg4:          oklch(0.82 0.014 248);
+  --border:       oklch(0.72 0.015 248);
+  --text:         oklch(0.12 0.02 260);
+  --text-label:   oklch(0.30 0.025 260);
+  --muted:        oklch(0.44 0.016 250);
+  --green-glow:   oklch(0.75 0.19 155 / 0.12);
+  --ring-focus:   0 0 0 3px oklch(0.75 0.19 155 / 0.20);
 
-  --glass:        oklch(0.96 0.005 240 / 0.72);
-  --glass-border: oklch(0.78 0.012 238 / 0.35);
-  --shadow-glass: 0 4px 24px oklch(0 0 0 / 0.08), inset 0 1px 0 oklch(1 0 0 / 0.6);
+  --glass:        oklch(0.98 0.005 250 / 0.65);
+  --glass-border: oklch(0.82 0.012 250 / 0.4);
+  --shadow-glass: 0 4px 24px oklch(0 0 0 / 0.06), inset 0 1px 0 oklch(1 0 0 / 0.7);
+  --shadow-glow:  0 0 40px oklch(0.75 0.19 155 / 0.06);
+  --gradient-card: linear-gradient(160deg, oklch(0.96 0.01 280 / 0.3), oklch(0.97 0.008 200 / 0.2), oklch(0.96 0.01 155 / 0.15));
 }
 
 [data-theme="light"] #root::before {
   background-image:
-    linear-gradient(oklch(0.72 0.015 238 / 0.25) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(0.72 0.015 238 / 0.25) 1px, transparent 1px);
+    linear-gradient(oklch(0.75 0.012 250 / 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.75 0.012 250 / 0.2) 1px, transparent 1px);
 }
 
 [data-theme="light"] body::after {
   background:
-    radial-gradient(ellipse 70% 50% at 50% 0%, oklch(0.70 0.17 152 / 0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 60% at 80% 100%, oklch(0.65 0.18 290 / 0.03) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 60% at 20% 10%, oklch(0.75 0.19 155 / 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 70% at 80% 20%, oklch(0.65 0.18 290 / 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 50% at 50% 90%, oklch(0.78 0.14 195 / 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, oklch(0.96 0.008 250) 0%, oklch(0.94 0.01 270) 100%);
 }
 
-[data-theme="light"] body::before { opacity: 0.035; }
+[data-theme="light"] body::before { opacity: 0.025; }
 
-/* Smooth theme crossfade on key properties only */
+/* Smooth theme crossfade */
 body, .contact-card, .card-header, .card-footer, .voice-box, .form-section, .navbar,
 .rs-input, .rs-picker-toggle, .rs-picker-menu, .lang-pill, .btn-submit {
-  transition: background-color 0.25s ease, border-color 0.2s ease, color 0.15s ease, box-shadow 0.25s ease !important;
+  transition: background-color 0.4s ease, border-color 0.3s ease, color 0.2s ease, box-shadow 0.4s ease !important;
 }
