@@ -8,7 +8,7 @@ L'objectif de cette partie est de transformer un texte brut dicté par un vété
 
 **Technologie utilisée : Ollama**
 
-Ollama est un outil open source qui permet de faire tourner des grands modèles de langage (LLM) entièrement **en local**, sans connexion internet, sans coût d'API. Le modèle utilisé est `llama3.2:3b` (3 milliards de paramètres, ~2 Go).
+Ollama est un outil open source qui permet de faire tourner des grands modèles de langage (LLM) entièrement **en local**, sans connexion internet, sans coût d'API. Le modèle utilisé est `qwen2.5:7b` (7 milliards de paramètres, ~4.7 Go).
 
 **Ce qui a été ajouté :**
 
@@ -23,7 +23,7 @@ Ollama est un outil open source qui permet de faire tourner des grands modèles 
 - Répondre **dans la même langue** que le texte d'entrée (14 langues supportées)
 
 **Configuration :**
-- Le modèle est configurable via la variable d'environnement `OLLAMA_MODEL` (défaut : `llama3.2:3b`)
+- Le modèle est configurable via la variable d'environnement `OLLAMA_MODEL` (défaut : `qwen2.5:7b`)
 - L'hôte Ollama est configurable via `OLLAMA_HOST` (défaut : `http://localhost:11434`)
 
 ---
@@ -74,13 +74,14 @@ npm run dev
 
 | Modèle | Taille | Avantages | Inconvénients |
 |---|---|---|---|
-| `llama3.2:3b` *(actuel)* | ~2 Go | Léger, rapide | Moins précis sur les termes médicaux |
+| `qwen2.5:7b` *(actuel)* | ~4.7 Go | Suit fiablement le prompt (routage des sections, pas d'invention), très bon en français | Nécessite un GPU pour rester rapide |
+| `llama3.2:3b` | ~2 Go | Léger, rapide | Peu fiable : invente des symptômes, route mal les sections |
 | `mistral:7b-instruct` | ~4.5 Go | Très bon en français, excellent pour la rédaction structurée | Nécessite plus de RAM |
 | `llama3.1:8b` | ~5 Go | Meilleure compréhension médicale | Plus lent |
 | `phi4-mini` | ~2.5 Go | Très bon rapport qualité/taille | Moins testé en français |
 | `meditron` | ~7 Go | Modèle spécialisé médical (fine-tuné sur PubMed) | Rare, moins facile à installer |
 
-**Recommandation :** Tester `mistral:7b-instruct` si la machine a 8 Go de RAM disponibles. Mistral AI est une entreprise française, le modèle est particulièrement performant en français et pour les textes structurés.
+**Recommandation :** `qwen2.5:7b` a été adopté comme modèle par défaut. Lors des tests, il suit fiablement le prompt (routage thorax/abdomen/bassin, omission des sections vides, aucune hallucination), là où `llama3.2:3b` inventait des symptômes (ex. une toux absente du texte) et mélangeait les sections. Latence ~4-5 s sur GPU, comparable au 3b.
 
 ---
 

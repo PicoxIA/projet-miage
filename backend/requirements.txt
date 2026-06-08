@@ -3,3 +3,4 @@ flask-cors
 faster-whisper
 ollama
 pymongo
+babel

@@ -8,16 +8,20 @@
 #
 # Prérequis pour le NLP :
 # 1. Installer Ollama : https://ollama.com/download
-# 2. Télécharger un modèle : ollama pull mistral  (ou llama3.2)
+# 2. Télécharger le modèle : ollama pull qwen2.5:7b  (modèle par défaut)
 # 3. Lancer Ollama : ollama serve
 
 import os
+import re
 import tempfile
 import time
 import uuid
+from datetime import date
 from typing import Any, Optional
 
 import ollama as ollama_lib
+from babel import UnknownLocaleError
+from babel.dates import format_date
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from faster_whisper import WhisperModel
@@ -28,7 +32,7 @@ from reports import reports_bp
 # ---------------------------------------------------------------------------
 
 OLLAMA_HOST  = os.getenv("OLLAMA_HOST",  "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 
 OLLAMA_GENERATE_OPTIONS: dict[str, Any] = {
     "temperature": 0.1,
@@ -85,40 +89,76 @@ def get_ollama_client() -> ollama_lib.Client:
     return ollama_lib.Client(host=OLLAMA_HOST)
 
 
-def build_enrich_prompt(text: str, lang_name: str) -> str:
+def localized_date_today(lang_code: str) -> str:
+    """Date du jour formatée dans la langue cible (ex. fr → "Le 8 juin 2026")."""
+    try:
+        formatted = format_date(date.today(), format="long", locale=lang_code)
+    except (UnknownLocaleError, ValueError):
+        formatted, lang_code = format_date(date.today(), format="long", locale="fr"), "fr"
+    return f"Le {formatted}" if lang_code == "fr" else formatted
+
+
+def build_enrich_prompt(text: str, lang_name: str, lang_code: str) -> str:
+    today_str = localized_date_today(lang_code)
     return f"""Tu es un assistant vétérinaire. Produis TOUJOURS un bilan structuré en {lang_name}, sans inventer d'information médicale.
 
 Format obligatoire :
 
+{today_str}
+
 Compte rendu vétérinaire
 
 THORAX :
-...
+...   (uniquement si le source en parle)
 
 ABDOMEN :
-...
+...   (uniquement si le source en parle)
 
 BASSIN :
-...
+...   (uniquement si le source en parle)
 
 CONCLUSION :
 ...
 
 Règles :
+- Commence TOUJOURS le bilan par la ligne "{today_str}" exactement.
 - Réponds UNIQUEMENT avec le bilan final, sans expliquer les règles.
-- Section sans donnée dans le source : "Aucune information renseignée."
-- N'invente jamais : radiographie, échographie, scanner, diagnostic, traitement, chiffre, fracture, hématome, hyperinflation, âge, propriétaire, examen non mentionné.
+- N'inclus une section (THORAX, ABDOMEN, BASSIN) que si le source apporte une information la concernant. Omets entièrement toute section sans information : ne pas écrire son titre, ni "Aucune information renseignée".
+- N'invente jamais : radiographie, échographie, scanner, diagnostic, traitement, chiffre, fracture, hématome, hyperinflation, âge, propriétaire, examen non mentionné, ni aucun symptôme absent du source (ex. ne pas ajouter "gêne respiratoire" si seule une toux est mentionnée).
 - Toux, respiration, gêne respiratoire → THORAX ; hanche, boiterie, patte arrière → BASSIN ; vomissement, abdomen, estomac, intestin, digestion → ABDOMEN.
 - Sections déjà présentes : conserver les informations et améliorer la formulation.
 - "Dans la partie X, ajouter :" : supprimer l'instruction, intégrer le contenu dans la section X.
-- Conclusion : résumer uniquement les informations présentes ; une seule section renseignée → conclusion limitée à cette section.
+- Conclusion : résumer uniquement les sections renseignées ; une seule section renseignée → conclusion limitée à cette section.
 - Conserver exactement dates, VHS, angles et degrés du source.
 
-Exemple — source : "Le chien tousse."
+Exemple 1 — source : "Le chien tousse."
+{today_str}
+
+Compte rendu vétérinaire
+
 THORAX : Le chien présente une toux.
-ABDOMEN : Aucune information renseignée.
-BASSIN : Aucune information renseignée.
+
 CONCLUSION : Les informations fournies rapportent une toux, sans autre élément renseigné.
+
+Exemple 2 — source : "Le chien boite de la patte arrière."
+{today_str}
+
+Compte rendu vétérinaire
+
+BASSIN : Le chien présente une boiterie de la patte arrière.
+
+CONCLUSION : Les informations fournies rapportent une boiterie de la patte arrière, sans autre élément renseigné.
+
+Exemple 3 — source : "Le chien vomit et tousse."
+{today_str}
+
+Compte rendu vétérinaire
+
+THORAX : Le chien présente une toux.
+
+ABDOMEN : Le chien présente des vomissements.
+
+CONCLUSION : Les informations fournies rapportent une toux et des vomissements, sans autre élément renseigné.
 
 Texte source :
 {text}
@@ -139,6 +179,16 @@ def sanitize_enriched_output(raw: str) -> str:
     return text
 
 
+_EMPTY_SECTION_RE = re.compile(r"(?im)^[ \t]*[A-ZÀ-Ü]+[ \t]*:[ \t]*aucune information.*$")
+
+
+def drop_empty_sections(text: str) -> str:
+    """Filet déterministe : retire les sections vides ('... : Aucune information
+    renseignée') que le modèle garde parfois malgré la consigne d'omission."""
+    text = _EMPTY_SECTION_RE.sub("", text)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
 def is_short_source(text: str) -> bool:
     return len(text) < SHORT_SOURCE_MAX_LEN
 
@@ -152,7 +202,7 @@ def run_ollama_enrich(prompt: str, *, short: bool = False) -> str:
         f"Ollama enrich done in {time.perf_counter() - started:.2f}s "
         f"(num_predict={options['num_predict']})"
     )
-    return sanitize_enriched_output(response.response)
+    return drop_empty_sections(sanitize_enriched_output(response.response))
 
 
 # ---------------------------------------------------------------------------
@@ -234,7 +284,7 @@ def create_app() -> Flask:
             return jsonify({"error": "Le champ 'text' est requis."}), 400
 
         lang_name = LANGUAGE_NAMES.get(lang_code, lang_code)
-        prompt    = build_enrich_prompt(text, lang_name)
+        prompt    = build_enrich_prompt(text, lang_name, lang_code)
         short     = is_short_source(text)
 
         try:
