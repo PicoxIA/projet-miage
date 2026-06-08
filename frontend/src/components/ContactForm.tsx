@@ -113,9 +113,13 @@ function SuccessOverlay({
   return (
     <div className="success-overlay">
       <div className="success-card" role="dialog" aria-labelledby="success-title">
+          <div className="confetti-container" aria-hidden>
+            <div className="confetti c1" /><div className="confetti c2" /><div className="confetti c3" />
+            <div className="confetti c4" /><div className="confetti c5" /><div className="confetti c6" />
+          </div>
         <div className="success-check">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: "var(--green)" }} aria-hidden>
-            <polyline points="20 6 9 17 4 12" />
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: "var(--green)" }} aria-hidden className="success-check-svg">
+            <polyline points="20 6 9 17 4 12" className="check-path" />
           </svg>
         </div>
         <h2 className="success-title" id="success-title">{tr("successTitle")}</h2>
