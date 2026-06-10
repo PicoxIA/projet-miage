@@ -26,8 +26,16 @@ function AppInner() {
   return (
     <CustomProvider theme={theme}>
       <div className="app-layout">
-        <div className="orb orb-tl" />
-        <div className="orb orb-br" />
+        {/* ── Animated background mesh ── */}
+        <div className="bg-mesh" aria-hidden>
+          <div className="mesh-blob mesh-blob--1" />
+          <div className="mesh-blob mesh-blob--2" />
+          <div className="mesh-blob mesh-blob--3" />
+          <div className="mesh-blob mesh-blob--4" />
+        </div>
+
+        {/* ── Decorative grid dots ── */}
+        <div className="bg-dots" aria-hidden />
 
         <nav className="navbar">
           <div className="navbar-logo">
@@ -68,13 +76,17 @@ function AppInner() {
 
         <main className="main-content">
           <div className="hero">
+            <div className="hero-badge">🎙️ 14 {tr("language").toLowerCase()}s</div>
             <h1 className="hero-title">
               {tr("heroTitle")}<br />
-              <span className="hero-title-green">{tr("heroTitleAccent")}</span>
+              <span className="hero-title-accent">{tr("heroTitleAccent")}</span>
             </h1>
+            <p className="hero-subtitle">Open source · Multilingue · IA vocale</p>
           </div>
 
           <div className="form-wrapper">
+            {/* Decorative glow behind card */}
+            <div className="card-glow" aria-hidden />
             <ContactForm />
           </div>
         </main>
