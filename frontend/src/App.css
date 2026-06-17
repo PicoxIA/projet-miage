@@ -1062,6 +1062,15 @@
   max-height: 280px; overflow-y: auto;
   scrollbar-width: thin; scrollbar-color: var(--green) var(--bg3);
 }
+.enriched-title {
+  color: var(--green);
+  font-family: var(--font-head);
+  font-weight: 700;
+  margin-top: 4px;
+}
+[data-theme="light"] .enriched-title {
+  color: oklch(0.45 0.15 152);
+}
 .enrich-panel-actions {
   display: flex; gap: 8px;
   padding: 10px 14px;

@@ -435,6 +435,50 @@ export function ContactForm() {
     webSpeech.stop();
   };
 
+  const renderEnrichedText = (text: string | null) => {
+    if (!text) return null;
+    return text.split("\n").map((line, index) => {
+      // 1. En-têtes avec des tirets (ex: "----- Compte rendu de l'examen -----")
+      const matchDashes = line.match(/^\s*([-#*=]{2,}\s*.+?\s*[-#*=]{2,})\s*$/u);
+      if (matchDashes) {
+        return (
+          <span key={index} style={{ display: "block" }}>
+            <span className="enriched-title">{matchDashes[1]}</span>
+          </span>
+        );
+      }
+
+      // 2. Titres se terminant par un double-point (ex: "THORAX :" ou "Hanche gauche :")
+      const matchColon = line.match(/^\s*(?:\*\*|)?([\p{L}\p{N} \-'\(\)/]{2,})(?:\*\*|)?\s*:\s*$/u);
+      if (matchColon) {
+        return (
+          <span key={index} style={{ display: "block" }}>
+            <span className="enriched-title">{matchColon[1]} :</span>
+          </span>
+        );
+      }
+
+      // 3. Titres avec du texte après le double-point (ex: "THORAX : clinique stable")
+      const matchMixed = line.match(/^\s*(?:\*\*|)?([\p{L}\p{N} \-'\(\)/]{2,30})(?:\*\*|)?\s*:\s*(.+)$/u);
+      if (matchMixed) {
+        const title = matchMixed[1];
+        const rest = matchMixed[2];
+        return (
+          <span key={index} style={{ display: "block" }}>
+            <span className="enriched-title">{title} :</span>
+            <span> {rest}</span>
+          </span>
+        );
+      }
+
+      return (
+        <span key={index} style={{ display: "block" }}>
+          {line || "\u00A0"}
+        </span>
+      );
+    });
+  };
+
   return (
     <>
       {sent && submittedAt && (
@@ -604,11 +648,11 @@ export function ContactForm() {
                 <div className="enrich-cols">
                   <div className="enrich-col">
                     <span className="enrich-col-label">{tr("originalLabel")}</span>
-                    <p className="enrich-col-text">{displayMessage}</p>
+                    <div className="enrich-col-text">{displayMessage}</div>
                   </div>
                   <div className="enrich-col enrich-col--enriched">
                     <span className="enrich-col-label">{tr("enrichedLabel")}</span>
-                    <p className="enrich-col-text">{enrichedText}</p>
+                    <div className="enrich-col-text">{renderEnrichedText(enrichedText)}</div>
                   </div>
                 </div>
                 <div className="enrich-panel-actions">
