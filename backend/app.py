@@ -87,63 +87,39 @@ def get_ollama_client() -> ollama_lib.Client:
     return ollama_lib.Client(host=OLLAMA_HOST)
 
 
+# Sections qui doivent toujours apparaître dans le compte rendu
+MANDATORY_SECTIONS = ("THORAX", "ABDOMEN", "BASSIN")
+
+
 def build_enrich_prompt(text: str, lang_name: str) -> str:
-    return f"""Tu es un expert en rédaction de comptes rendus vétérinaires professionnels.
-Transforme le texte source en rapport clair, complet et professionnel en {lang_name}.
+    return f"""Tu es un expert en rédaction clinique vétérinaire. Ton rôle est d'analyser n'importe quel texte ou transcription vocale brute, d'extraire les informations pertinentes, de corriger la syntaxe et d'enrichir le vocabulaire technique tout en respectant une structure stricte.
 
-RÈGLE 1 — AUCUNE HALLUCINATION
-Ne jamais inventer : symptôme, maladie, diagnostic, traitement, dosage, examen, résultat, mesure, observation.
-En cas de doute, ne rien ajouter.
+1. ADAPTABILITÉ ET ANALYSE
+Tu dois être capable de traiter n'importe quelle entrée textuelle, quel que soit son degré de précision, son désordre ou sa langue. Le compte rendu final doit être rédigé en {lang_name}.
+Analyse le texte pour identifier les informations liées au patient et les observations anatomiques.
 
-RÈGLE 2 — AUCUNE PERTE D'INFORMATION
-Conserver chaque donnée du source : âge, sexe, race, poids, durée, date, symptômes, température, fréquence, dosage, traitement, observation, résultat, hypothèse, remarque.
+2. STRUCTURE OBLIGATOIRE (Ordre strict)
+PRÉSENTATION : (Conditionnel) Si la dictée contient des infos (race, âge, type, nom, sexe, poids), génère cette section. Sinon, ne l'écris pas du tout.
 
-RÈGLE 3 — NE PAS RÉSUMER
-Corriger, reformuler, enrichir, structurer, professionnaliser — jamais raccourcir. Le final contient au minimum autant d'informations que le source.
+THORAX : (Obligatoire) Remplis avec les infos trouvées ou écris 'Non renseigné.'
+ABDOMEN : (Obligatoire) Remplis avec les infos trouvées ou écris 'Non renseigné.'
+BASSIN : (Obligatoire) Remplis avec les infos trouvées ou écris 'Non renseigné.'
 
-RÈGLE 4 — DONNÉES CLINIQUES EXACTES
-Reproduire exactement températures, mesures, poids, dosages, durées, fréquences, résultats, valeurs biologiques, VHS, angles, degrés.
+AUTRES ZONES : Si l'utilisateur mentionne une autre zone anatomique (ex: Membres, Rachis, Crâne, Peau, Dentition, etc.), crée une catégorie en MAJUSCULES après 'BASSIN' et insère les infos.
 
-RÈGLE 5 — LANGUE
-Répondre uniquement en {lang_name}. Ne pas traduire.
+CONCLUSION : (Obligatoire) Synthétise le diagnostic et la conduite à tenir. Si aucune info n'est disponible, résume simplement l'état général.
 
-STRUCTURATION DYNAMIQUE
-- Pas de structure fixe. Créer uniquement les sections pertinentes (ANAMNÈSE, EXAMEN CLINIQUE, THORAX, ABDOMEN, BASSIN, MEMBRES, IMAGERIE, TRAITEMENT, CONCLUSION, etc.).
-- Ne jamais forcer une information dans une section inadaptée.
+3. RÈGLES DE STYLE ET FORMATAGE
+Utilise un langage médical professionnel (ex: transformer 'gros cœur' en 'cardiomégalie', 'mal au ventre' en 'douleur abdominale').
+Garde les valeurs numériques exactes (ex: 10,2 V, 39,5 °C). Si tu détectes des erreurs de frappe ou des tics de langage, nettoie-les.
+Sois concis, professionnel et direct.
 
-RÈGLE 6 — INTERDICTION DES SECTIONS VIDES
-Ne jamais créer une section vide. Si aucune information du source concerne une section :
-- ne pas afficher la section ;
-- ne pas écrire "aucune information", "non renseigné", "aucune donnée disponible" ni équivalent.
-Afficher uniquement les sections contenant au moins une information réelle du source.
-Interdit : ANAMNÈSE : Aucune information d'anamnèse n'est fournie. / TRAITEMENT : Aucun traitement n'est mentionné. / EXAMEN IMAGÉRIQUE : Aucune information concernant l'imagerie. → supprimer totalement ces sections.
+Ne perds aucune information : chaque fait clinique de la dictée doit apparaître dans le compte rendu.
+Ne propose aucun suivi, examen complémentaire ou conseil non mentionné dans la dictée.
 
-RÈGLE 7 — INTERDICTION DES RECOMMANDATIONS INVENTÉES
-Ne jamais jouer le rôle du vétérinaire. Ne jamais proposer recommandations, examens complémentaires, hypothèses supplémentaires, conseils, actions futures ou suivi recommandé, sauf si explicitement présents dans le source.
-Expressions interdites sauf présence dans le source : "Il est recommandé de...", "Il serait utile de...", "Un suivi est conseillé...", "Une évaluation complémentaire...", "Des examens complémentaires sont recommandés...", "Une surveillance est recommandée...", "Il conviendrait de...".
-Rôle limité à : corriger, reformuler, enrichir le vocabulaire, structurer, réorganiser. Jamais d'avis médical propre au modèle.
+Répondre UNIQUEMENT avec le compte rendu final, sans commentaire ni explication.
 
-SI DÉJÀ STRUCTURÉ
-Conserver les sections existantes, améliorer la rédaction, intégrer les remarques libres, ne supprimer aucune section avec information.
-
-SI NON STRUCTURÉ
-Identifier les informations, regrouper par thème, créer une structure cohérente.
-
-REMARQUES LIBRES / DICTÉE VOCALE
-- "Dans la partie X, ajouter :" : supprimer l'instruction, intégrer le contenu dans la section X.
-- Remarque libre en fin de texte : l'intégrer dans la section appropriée ; la mentionner en conclusion si cliniquement importante.
-
-CONTRÔLE FINAL
-Avant de répondre :
-1. Vérifier qu'aucune section vide n'est affichée.
-2. Vérifier qu'aucune recommandation ou conseil n'a été ajouté.
-3. Vérifier qu'aucune information du source n'a disparu.
-4. Vérifier qu'aucune information nouvelle n'a été inventée.
-Ensuite seulement générer le compte rendu final.
-
-Répondre UNIQUEMENT avec le compte rendu final, sans commentaire ni explication des règles.
-
-Texte source :
+Dictée :
 {text}
 
 Compte rendu :"""
@@ -154,32 +130,12 @@ _OUTPUT_MARKERS = (
     "Texte final :", "Texte final:", "Enriched text:", "Enriched text :",
 )
 
-_FORBIDDEN_RECOMMENDATION_PHRASES: tuple[str, ...] = (
-    "il est recommandé",
-    "il serait recommandé",
-    "il serait utile",
-    "il conviendrait",
-    "une évaluation complémentaire",
-    "des examens complémentaires",
-    "un suivi est conseillé",
-    "une surveillance est recommandée",
-    "il est conseillé",
-    "consulter un vétérinaire",
-    "suggère la présence",
-    "pourrait évoquer",
-    "compatible avec",
-    "suspicion de",
-    "infection locale",
-    "inflammation ou infection",
-    "nécessitant un traitement spécifique",
-)
-
 _EMPTY_BODY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(p, re.IGNORECASE)
     for p in (
         r"^aucune information",
         r"^aucun traitement",
-        r"^non renseigné",
+        # "non renseigné" est conservé pour les sections obligatoires — ne pas filtrer ici
         r"^aucune donnée",
         r"^il n.?y a pas",
         r"n.?est pas mentionné",
@@ -193,6 +149,9 @@ _EMPTY_BODY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     )
 )
 
+# Marqueur valide pour les sections obligatoires sans contenu
+_NON_RENSEIGNE_RE = re.compile(r"^non renseign[ée]\.?$", re.IGNORECASE)
+
 _SECTION_HEADER_RE = re.compile(
     r"^(?P<header>[A-ZÀ-ÜÉÈÊËÎÏÔÙÛÜÇ][A-ZÀ-ÜÉÈÊËÎÏÔÙÛÜÇ0-9 \-'/]+?)\s*:\s*(?P<rest>.*)$",
 )
@@ -205,6 +164,24 @@ _NESTED_HEADER_ONLY_RE = re.compile(
     r"^[A-Za-zÀ-ÜÉÈÊËÎÏÔÙÛÜÇ][A-Za-zÀ-ÜÉÈÊËÎÏÔÙÛÜÇ0-9 \-'/]*?\s*:\s*$",
 )
 
+# Pattern: ligne d'identité avec valeur "Non renseigné"
+_IDENTITY_NON_RENSEIGNE_RE = re.compile(
+    r"^\[?\s*(Nom|Espèce|Race|\u00c2ge|Age|Sexe|Poids)\s*:\s*Non renseign[eé]\.?\s*\]?$",
+    re.IGNORECASE,
+)
+# Pattern: ligne d'identité entre crochets valide [Espece : Chat] -> Espece : Chat
+_IDENTITY_BRACKET_RE = re.compile(r"^\[\s*(.+?)\s*\]$")
+# Pattern: instruction vocale recopiee
+_VOICE_INSTRUCTION_RE = re.compile(r"dans la partie .+?,?\s*ajouter\s*:", re.IGNORECASE)
+# Pattern: lignes parasites du prompt
+_PROMPT_ARTIFACT_RE = re.compile(
+    r"^\s*(\[A\]|\[B\]|\[C\]|\u2501+|\u258c"
+    r"|STRUCTURE |REGLES |CONTROLE FINAL|REPONDRE UNIQUEMENT|Texte source\s*:"
+    r"|Dictée\s*:|SECTIONS OBLIGATOIRES|ZONES SUPPLEMENTAIRES"
+    r"|PRESENTATION DE L.ANIMAL|EXAMEN CLINIQUE ET IMAGERIE)",
+    re.IGNORECASE,
+)
+
 _PARENTHETICAL_RE = re.compile(r"\([^)]+\)")
 
 _SECTION_ALIASES: dict[str, tuple[str, ...]] = {
@@ -214,49 +191,42 @@ _SECTION_ALIASES: dict[str, tuple[str, ...]] = {
 
 
 def sanitize_enriched_output(raw: str) -> str:
-    """Retire les préfixes de prompt recopiés par le modèle."""
+    """Retire les préfixes de prompt recopies, les crochets d'identité et les artefacts."""
     text = raw.strip()
     for marker in _OUTPUT_MARKERS:
         lower = text.lower()
         key = marker.lower()
         if key in lower:
             idx = lower.rfind(key)
-            tail = text[idx + len(marker) :].strip()
+            tail = text[idx + len(marker):].strip()
             if tail:
                 text = tail
-    return text
+
+    cleaned: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        # Supprimer les champs d'identité avec "Non renseigné"
+        if _IDENTITY_NON_RENSEIGNE_RE.match(stripped):
+            continue
+        # Supprimer les instructions vocales recopiees
+        if _VOICE_INSTRUCTION_RE.search(stripped):
+            continue
+        # Supprimer les lignes parasites du prompt
+        if _PROMPT_ARTIFACT_RE.match(stripped):
+            continue
+        # Retirer les crochets autour des lignes d'identité
+        bracket_match = _IDENTITY_BRACKET_RE.match(stripped)
+        if bracket_match:
+            cleaned.append(bracket_match.group(1))
+        else:
+            cleaned.append(line)
+
+    return "\n".join(cleaned).strip()
 
 
 def _fold_accents(text: str) -> str:
     folded = unicodedata.normalize("NFD", text.lower())
     return "".join(c for c in folded if unicodedata.category(c) != "Mn")
-
-
-def _sentence_has_forbidden_phrase(sentence: str) -> bool:
-    folded = _fold_accents(sentence)
-    return any(_fold_accents(phrase) in folded for phrase in _FORBIDDEN_RECOMMENDATION_PHRASES)
-
-
-def _split_sentences(line: str) -> list[str]:
-    parts = re.split(r"(?<=[.!?…])\s+", line.strip())
-    return [p.strip() for p in parts if p.strip()]
-
-
-def remove_forbidden_recommendations(text: str) -> str:
-    """Supprime les phrases contenant des recommandations ou hypothèses inventées."""
-    kept_lines: list[str] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            kept_lines.append("")
-            continue
-        sentences = _split_sentences(stripped)
-        if not sentences:
-            continue
-        kept = [s for s in sentences if not _sentence_has_forbidden_phrase(s)]
-        if kept:
-            kept_lines.append(" ".join(kept))
-    return "\n".join(kept_lines)
 
 
 def _normalize_for_match(text: str) -> str:
@@ -265,10 +235,13 @@ def _normalize_for_match(text: str) -> str:
     return text.strip()
 
 
-def _is_placeholder_line(line: str) -> bool:
+def _is_placeholder_line(line: str, allow_non_renseigne: bool = False) -> bool:
     stripped = line.strip()
     if not stripped:
         return True
+    # "Non renseigné." est un contenu valide pour les sections obligatoires
+    if allow_non_renseigne and _NON_RENSEIGNE_RE.match(stripped):
+        return False
     return any(pattern.search(stripped) for pattern in _EMPTY_BODY_PATTERNS)
 
 
@@ -286,7 +259,7 @@ def _is_factual_line(line: str) -> bool:
     return True
 
 
-def _clean_factual_body_lines(body_lines: list[str]) -> list[str]:
+def _clean_factual_body_lines(body_lines: list[str], allow_non_renseigne: bool = False) -> list[str]:
     cleaned: list[str] = []
     for line in body_lines:
         stripped = line.strip()
@@ -296,6 +269,10 @@ def _clean_factual_body_lines(body_lines: list[str]) -> list[str]:
             continue
         header_match = _SECTION_HEADER_RE.match(stripped)
         if header_match and not header_match.group("rest").strip():
+            continue
+        # Accepter "Non renseigné." pour les sections obligatoires
+        if allow_non_renseigne and _NON_RENSEIGNE_RE.match(stripped):
+            cleaned.append(stripped)
             continue
         if _is_factual_line(stripped):
             cleaned.append(stripped)
@@ -308,7 +285,7 @@ def _is_empty_section_body(body: str) -> bool:
 
 
 def drop_empty_sections(text: str) -> str:
-    """Retire les sections sans ligne factuelle réelle."""
+    """Retire les sections sans ligne factuelle réelle (conserve THORAX/ABDOMEN/BASSIN même vides)."""
     lines = text.splitlines()
     preamble: list[str] = []
     i = 0
@@ -316,7 +293,7 @@ def drop_empty_sections(text: str) -> str:
     while i < len(lines):
         if _SECTION_HEADER_RE.match(lines[i]):
             break
-        if _is_factual_line(lines[i]):
+        if _is_factual_line(lines[i]) or _SOURCE_SECTION_RE.match(lines[i]):
             preamble.append(lines[i])
         i += 1
 
@@ -334,6 +311,7 @@ def drop_empty_sections(text: str) -> str:
             continue
 
         header = match.group("header")
+        is_mandatory = header.strip().upper() in MANDATORY_SECTIONS
         body_lines: list[str] = []
         rest = match.group("rest").strip()
         if rest:
@@ -344,8 +322,10 @@ def drop_empty_sections(text: str) -> str:
             body_lines.append(lines[i])
             i += 1
 
-        factual_lines = _clean_factual_body_lines(body_lines)
+        factual_lines = _clean_factual_body_lines(body_lines, allow_non_renseigne=is_mandatory)
         if not factual_lines:
+            if is_mandatory:
+                kept_blocks.append(f"{header} :\nNon renseigné.")
             continue
 
         kept_blocks.append(f"{header} :\n" + "\n".join(factual_lines))
@@ -479,13 +459,7 @@ def _inject_missing_facts(text: str, missing: list[str], source: str) -> str:
     return text.rstrip() + "\n\n" + block
 
 
-def ensure_source_facts_preserved(text: str, source: str) -> str:
-    """Réinjecte les lignes factuelles du source absentes de la sortie."""
-    missing = [
-        fact for fact in _extract_source_fact_lines(source)
-        if not _fact_preserved_in_output(fact, text)
-    ]
-    return _inject_missing_facts(text, missing, source)
+# Filtres agressifs désactivés : on fait confiance au LLM pour générer et formuler le contenu.
 
 
 def normalize_spacing(text: str) -> str:
@@ -494,15 +468,80 @@ def normalize_spacing(text: str) -> str:
     return text.strip()
 
 
+def ensure_mandatory_sections(text: str) -> str:
+    """Garantit que THORAX, ABDOMEN, BASSIN sont présents dans l'ordre.
+    PRÉSENTATION en tête (si présente), CONCLUSION toujours en fin."""
+    lines = text.splitlines()
+    i = 0
+
+    # Conserver le préambule (texte libre avant la première section)
+    preamble_lines: list[str] = []
+    while i < len(lines) and not _SECTION_HEADER_RE.match(lines[i]):
+        preamble_lines.append(lines[i])
+        i += 1
+
+    # Extraire toutes les sections
+    present: dict[str, str] = {}  # header_upper -> bloc complet
+    other_blocks: list[str] = []
+    while i < len(lines):
+        match = _SECTION_HEADER_RE.match(lines[i])
+        if not match:
+            i += 1
+            continue
+        header_upper = match.group("header").strip().upper()
+        block_lines = [lines[i]]
+        i += 1
+        while i < len(lines) and not _SECTION_HEADER_RE.match(lines[i]):
+            block_lines.append(lines[i])
+            i += 1
+        block = "\n".join(block_lines).strip()
+        # Unifier PRÉSENTATION / PRÉSENTATION DU PATIENT
+        if header_upper.startswith("PRÉSENTATION") or header_upper.startswith("PRESENTATION"):
+            present["PRÉSENTATION"] = block
+        elif header_upper in MANDATORY_SECTIONS:
+            present[header_upper] = block
+        elif header_upper == "CONCLUSION":
+            present["CONCLUSION"] = block
+        else:
+            other_blocks.append(block)
+
+    ordered: list[str] = []
+
+    # Préambule (texte hors section)
+    preamble = "\n".join(preamble_lines).strip()
+    if preamble:
+        ordered.append(preamble)
+
+    # PRÉSENTATION en premier (conditionnelle)
+    if "PRÉSENTATION" in present:
+        ordered.append(present["PRÉSENTATION"])
+
+    # THORAX / ABDOMEN / BASSIN obligatoires
+    for section in MANDATORY_SECTIONS:
+        if section in present:
+            ordered.append(present[section])
+        else:
+            ordered.append(f"{section} :\nNon renseigné.")
+
+    # Sections supplémentaires
+    ordered.extend(other_blocks)
+
+    # CONCLUSION toujours en dernier
+    if "CONCLUSION" in present:
+        ordered.append(present["CONCLUSION"])
+    else:
+        ordered.append("CONCLUSION :\nNon renseigné.")
+
+    return "\n\n".join(ordered).strip()
+
+
 def post_process_enriched_text(text: str, source: str = "") -> str:
     text = sanitize_enriched_output(text)
-    text = remove_forbidden_recommendations(text)
     if source:
         text = remove_unsourced_parentheticals(text, source)
     text = drop_empty_sections(text)
-    if source:
-        text = ensure_source_facts_preserved(text, source)
-        text = drop_empty_sections(text)
+    # Garantir la présence et l'ordre des sections obligatoires
+    text = ensure_mandatory_sections(text)
     text = normalize_spacing(text)
     return text
 
