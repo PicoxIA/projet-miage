@@ -152,7 +152,7 @@ Le patient présente un saignement au bout de la queue et les deux yeux collés 
 Texte utilisateur :
 {text}
 
-Ton rendu doit être :"""
+Ton rendu (intégralement traduit en {lang_name}) doit être :"""
 
 
 _OUTPUT_MARKERS = (
