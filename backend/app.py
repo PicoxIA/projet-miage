@@ -116,6 +116,10 @@ Sous chaque catégorie, décris le problème en utilisant EXACTEMENT les mêmes 
 
 Rédige un mini-résumé très court reprenant les symptômes ou actions dictés par l'utilisateur, toujours sans inventer de jargon médical.
 
+4. TRADUCTION IMPÉRATIVE DES TITRES ET DU TEXTE
+
+L'intégralité du compte rendu doit être générée en {lang_name}. Tu dois OBLIGATOIREMENT traduire les mots "PRÉSENTATION :" et "CONCLUSION :" dans cette langue (par exemple "PRESENTATION:" et "SUMMARY:" en anglais, ou leurs équivalents en espagnol, serbe, etc.). Fais de même pour tous les titres des catégories dynamiques. Ne laisse aucun mot français si le texte d'origine n'est pas en français.
+
 EXEMPLES DE COMPORTEMENT :
 
 Exemple 1 (Avec présentation) :
