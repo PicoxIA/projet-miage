@@ -30,7 +30,7 @@ from reports import reports_bp
 # ---------------------------------------------------------------------------
 
 OLLAMA_HOST  = os.getenv("OLLAMA_HOST",  "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 
 OLLAMA_GENERATE_OPTIONS: dict[str, Any] = {
     "temperature": 0.1,
@@ -87,42 +87,68 @@ def get_ollama_client() -> ollama_lib.Client:
     return ollama_lib.Client(host=OLLAMA_HOST)
 
 
-# Sections qui doivent toujours apparaître dans le compte rendu
-MANDATORY_SECTIONS = ("THORAX", "ABDOMEN", "BASSIN")
-
-
 def build_enrich_prompt(text: str, lang_name: str) -> str:
-    return f"""Tu es un expert en rédaction clinique vétérinaire. Ton rôle est d'analyser n'importe quel texte ou transcription vocale brute, d'extraire les informations pertinentes, de corriger la syntaxe et d'enrichir le vocabulaire technique tout en respectant une structure stricte.
+    return f"""Tu es un assistant de transcription chargé de structurer des dictées vétérinaires brutes. Ton rôle est d'extraire les informations de n'importe quel texte et de les organiser dynamiquement, avec une fidélité absolue aux mots de l'utilisateur. Le compte rendu final doit être rédigé en {lang_name}.
 
-1. ADAPTABILITÉ ET ANALYSE
-Tu dois être capable de traiter n'importe quelle entrée textuelle, quel que soit son degré de précision, son désordre ou sa langue. Le compte rendu final doit être rédigé en {lang_name}.
-Analyse le texte pour identifier les informations liées au patient et les observations anatomiques.
+RÈGLES ABSOLUES À RESPECTER :
 
-2. STRUCTURE OBLIGATOIRE (Ordre strict)
-PRÉSENTATION : (Conditionnel) Si la dictée contient des infos (race, âge, type, nom, sexe, poids), génère cette section. Sinon, ne l'écris pas du tout.
+1. PRÉSENTATION DE L'ANIMAL (Conditionnelle et Stricte)
 
-THORAX : (Obligatoire) Remplis avec les infos trouvées ou écris 'Non renseigné.'
-ABDOMEN : (Obligatoire) Remplis avec les infos trouvées ou écris 'Non renseigné.'
-BASSIN : (Obligatoire) Remplis avec les infos trouvées ou écris 'Non renseigné.'
+Analyse le texte pour y chercher des informations sur l'animal (espèce, race, âge, nom).
 
-AUTRES ZONES : Si l'utilisateur mentionne une autre zone anatomique (ex: Membres, Rachis, Crâne, Peau, Dentition, etc.), crée une catégorie en MAJUSCULES après 'BASSIN' et insère les infos.
+SI tu trouves ces informations : crée une section PRÉSENTATION : tout au début et mets-y ces informations.
 
-CONCLUSION : (Obligatoire) Synthétise le diagnostic et la conduite à tenir. Si aucune info n'est disponible, résume simplement l'état général.
+SINON (si aucune info sur l'animal n'est mentionnée) : tu ne dois strictement rien écrire. Ne crée pas la section, n'écris pas "Non renseigné", commence directement par les catégories médicales.
 
-3. RÈGLES DE STYLE ET FORMATAGE
-Utilise un langage médical professionnel (ex: transformer 'gros cœur' en 'cardiomégalie', 'mal au ventre' en 'douleur abdominale').
-Garde les valeurs numériques exactes (ex: 10,2 V, 39,5 °C). Si tu détectes des erreurs de frappe ou des tics de langage, nettoie-les.
-Sois concis, professionnel et direct.
+2. CRÉATION DYNAMIQUE DES CATÉGORIES (Adaptabilité totale)
 
-Ne perds aucune information : chaque fait clinique de la dictée doit apparaître dans le compte rendu.
-Ne propose aucun suivi, examen complémentaire ou conseil non mentionné dans la dictée.
+Le compte rendu n'a plus de structure fixe. Tu dois t'adapter à 100% au texte fourni.
 
-Répondre UNIQUEMENT avec le compte rendu final, sans commentaire ni explication.
+Identifie chaque zone du corps, organe ou sujet mentionné par l'utilisateur (ex: Ventre, Patte avant, Oreille gauche, Dentition, Peau, etc.).
 
-Dictée :
+Pour chaque zone détectée, crée une catégorie en MAJUSCULES (ex: OREILLE GAUCHE :).
+
+Sous chaque catégorie, décris le problème en utilisant EXACTEMENT les mêmes termes que l'utilisateur. INTERDICTION d'inventer des termes médicaux (si l'utilisateur dit "grosse boule", écris "grosse boule", n'écris pas "masse tumorale").
+
+3. CONCLUSION (Obligatoire)
+
+À la toute fin de ta réponse, crée une section CONCLUSION :.
+
+Rédige un mini-résumé très court reprenant les symptômes ou actions dictés par l'utilisateur, toujours sans inventer de jargon médical.
+
+EXEMPLES DE COMPORTEMENT :
+
+Exemple 1 (Avec présentation) :
+Texte : "C'est un labrador de 8 ans. La patte droite est enflée et il a une coupure sur la truffe."
+Rendu :
+PRÉSENTATION :
+Labrador de 8 ans.
+
+PATTE DROITE :
+La patte est enflée.
+
+TRUFFE :
+Présence d'une coupure.
+
+CONCLUSION :
+Consultation pour une patte droite enflée et une coupure sur la truffe.
+
+Exemple 2 (Sans présentation - on passe direct aux zones) :
+Texte : "Le bout de la queue saigne beaucoup. Les deux yeux sont tout collés par du pus."
+Rendu :
+QUEUE :
+Le bout de la queue saigne beaucoup.
+
+YEUX :
+Les deux yeux sont tout collés par du pus.
+
+CONCLUSION :
+Le patient présente un saignement au bout de la queue et les deux yeux collés par du pus.
+
+Texte utilisateur :
 {text}
 
-Compte rendu :"""
+Ton rendu doit être :"""
 
 
 _OUTPUT_MARKERS = (
@@ -135,7 +161,6 @@ _EMPTY_BODY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     for p in (
         r"^aucune information",
         r"^aucun traitement",
-        # "non renseigné" est conservé pour les sections obligatoires — ne pas filtrer ici
         r"^aucune donnée",
         r"^il n.?y a pas",
         r"n.?est pas mentionné",
@@ -146,11 +171,16 @@ _EMPTY_BODY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         r"^il n.?y a pas d.?information",
         r"^aucun examen",
         r"^aucune donnée disponible",
+        r"non renseign[eé]",
+        r"aucun détail",
+        r"pas de mention",
+        r"non mentionn[eé]",
+        r"pas d\'observation",
     )
 )
 
-# Marqueur valide pour les sections obligatoires sans contenu
 _NON_RENSEIGNE_RE = re.compile(r"^non renseign[ée]\.?$", re.IGNORECASE)
+_OBSERVATION_PREFIX_RE = re.compile(r"^\s*observations?\s*:\s*", re.IGNORECASE)
 
 _SECTION_HEADER_RE = re.compile(
     r"^(?P<header>[A-ZÀ-ÜÉÈÊËÎÏÔÙÛÜÇ][A-ZÀ-ÜÉÈÊËÎÏÔÙÛÜÇ0-9 \-'/]+?)\s*:\s*(?P<rest>.*)$",
@@ -217,9 +247,13 @@ def sanitize_enriched_output(raw: str) -> str:
         # Retirer les crochets autour des lignes d'identité
         bracket_match = _IDENTITY_BRACKET_RE.match(stripped)
         if bracket_match:
-            cleaned.append(bracket_match.group(1))
-        else:
-            cleaned.append(line)
+            stripped = bracket_match.group(1)
+        
+        # Nettoyer le préfixe "Observations:" ou "Observation:"
+        stripped = _OBSERVATION_PREFIX_RE.sub("", stripped).strip()
+
+        if stripped:
+            cleaned.append(stripped)
 
     return "\n".join(cleaned).strip()
 
@@ -239,9 +273,9 @@ def _is_placeholder_line(line: str, allow_non_renseigne: bool = False) -> bool:
     stripped = line.strip()
     if not stripped:
         return True
-    # "Non renseigné." est un contenu valide pour les sections obligatoires
-    if allow_non_renseigne and _NON_RENSEIGNE_RE.match(stripped):
-        return False
+    # Si allow_non_renseigne est False, "Non renseigné" est considéré comme un placeholder
+    if not allow_non_renseigne and _NON_RENSEIGNE_RE.match(stripped):
+        return True
     return any(pattern.search(stripped) for pattern in _EMPTY_BODY_PATTERNS)
 
 
@@ -285,7 +319,7 @@ def _is_empty_section_body(body: str) -> bool:
 
 
 def drop_empty_sections(text: str) -> str:
-    """Retire les sections sans ligne factuelle réelle (conserve THORAX/ABDOMEN/BASSIN même vides)."""
+    """Retire les sections sans ligne factuelle réelle."""
     lines = text.splitlines()
     preamble: list[str] = []
     i = 0
@@ -311,7 +345,6 @@ def drop_empty_sections(text: str) -> str:
             continue
 
         header = match.group("header")
-        is_mandatory = header.strip().upper() in MANDATORY_SECTIONS
         body_lines: list[str] = []
         rest = match.group("rest").strip()
         if rest:
@@ -322,13 +355,15 @@ def drop_empty_sections(text: str) -> str:
             body_lines.append(lines[i])
             i += 1
 
-        factual_lines = _clean_factual_body_lines(body_lines, allow_non_renseigne=is_mandatory)
+        factual_lines = _clean_factual_body_lines(body_lines, allow_non_renseigne=False)
         if not factual_lines:
-            if is_mandatory:
-                kept_blocks.append(f"{header} :\nNon renseigné.")
             continue
 
-        kept_blocks.append(f"{header} :\n" + "\n".join(factual_lines))
+        actual_lines = [line for line in factual_lines if not _NON_RENSEIGNE_RE.match(line)]
+        if not actual_lines:
+            continue
+
+        kept_blocks.append(f"{header} :\n" + "\n".join(actual_lines))
 
     return "\n\n".join(kept_blocks).strip()
 
@@ -469,8 +504,9 @@ def normalize_spacing(text: str) -> str:
 
 
 def ensure_mandatory_sections(text: str) -> str:
-    """Garantit que THORAX, ABDOMEN, BASSIN sont présents dans l'ordre.
-    PRÉSENTATION en tête (si présente), CONCLUSION toujours en fin."""
+    """Ordonne les sections présentes dans l'ordre logique :
+    PRÉSENTATION, THORAX, ABDOMEN, BASSIN, autres zones, CONCLUSION.
+    Ne rajoute pas les sections absentes."""
     lines = text.splitlines()
     i = 0
 
@@ -483,12 +519,16 @@ def ensure_mandatory_sections(text: str) -> str:
     # Extraire toutes les sections
     present: dict[str, str] = {}  # header_upper -> bloc complet
     other_blocks: list[str] = []
+    
+    order_keys = ["PRÉSENTATION", "THORAX", "ABDOMEN", "BASSIN"]
+    
     while i < len(lines):
         match = _SECTION_HEADER_RE.match(lines[i])
         if not match:
             i += 1
             continue
-        header_upper = match.group("header").strip().upper()
+        header_raw = match.group("header").strip()
+        header_upper = header_raw.upper()
         block_lines = [lines[i]]
         i += 1
         while i < len(lines) and not _SECTION_HEADER_RE.match(lines[i]):
@@ -498,10 +538,8 @@ def ensure_mandatory_sections(text: str) -> str:
         # Unifier PRÉSENTATION / PRÉSENTATION DU PATIENT
         if header_upper.startswith("PRÉSENTATION") or header_upper.startswith("PRESENTATION"):
             present["PRÉSENTATION"] = block
-        elif header_upper in MANDATORY_SECTIONS:
+        elif header_upper in ("THORAX", "ABDOMEN", "BASSIN", "CONCLUSION"):
             present[header_upper] = block
-        elif header_upper == "CONCLUSION":
-            present["CONCLUSION"] = block
         else:
             other_blocks.append(block)
 
@@ -512,25 +550,17 @@ def ensure_mandatory_sections(text: str) -> str:
     if preamble:
         ordered.append(preamble)
 
-    # PRÉSENTATION en premier (conditionnelle)
-    if "PRÉSENTATION" in present:
-        ordered.append(present["PRÉSENTATION"])
-
-    # THORAX / ABDOMEN / BASSIN obligatoires
-    for section in MANDATORY_SECTIONS:
+    # Sections ordonnées, uniquement si elles sont présentes
+    for section in order_keys:
         if section in present:
             ordered.append(present[section])
-        else:
-            ordered.append(f"{section} :\nNon renseigné.")
 
     # Sections supplémentaires
     ordered.extend(other_blocks)
 
-    # CONCLUSION toujours en dernier
+    # CONCLUSION en dernier si présente
     if "CONCLUSION" in present:
         ordered.append(present["CONCLUSION"])
-    else:
-        ordered.append("CONCLUSION :\nNon renseigné.")
 
     return "\n\n".join(ordered).strip()
 
@@ -540,7 +570,7 @@ def post_process_enriched_text(text: str, source: str = "") -> str:
     if source:
         text = remove_unsourced_parentheticals(text, source)
     text = drop_empty_sections(text)
-    # Garantir la présence et l'ordre des sections obligatoires
+    # Ordonner les sections présentes
     text = ensure_mandatory_sections(text)
     text = normalize_spacing(text)
     return text
