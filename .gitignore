@@ -1,6 +1,5 @@
 .claude/
 .idea/
-*.pdf
 l.code
 PROJECT_DOCUMENTATION.md
 __pycache__/
